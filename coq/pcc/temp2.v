@@ -465,92 +465,110 @@ Proof.
               apply app_inj_tail in H4.
               elim: H4 => H4 H5.
               rewrite H5 {H5 c'} in trans1.
-              rewrite  b_updates_compositional a_updates_compositional -app_nil_end /= in H1.
-            Focus 2.  
+              rewrite  b_updates_compositional -app_nil_end /= in H1.
+              exists (e1 ++ a n1 :: b n1 :: a n :: nil).
+              
+              split.
+              have H3: e1 ++ a n1 :: b n1 :: a n :: nil = (e1 ++ a n1 :: nil) ++ b n1 :: a n :: nil by rewrite app_ass -app_comm_cons.
+              rewrite H3 {H3}.
+              apply exec_trans.
+              apply trans_ba.
+              have H3: (e1 ++ a n1 :: nil) ++ b n1 :: nil = e1 ++ a n1 :: b n1 :: nil by rewrite app_ass -app_comm_cons.
+              rewrite H3 {H3}.
+              apply exec_trans.
+              by apply trans_ab.
+              done.
+              
+              have H3: e' ++ a' n0 :: b' n :: nil = (e' ++ a' n0 :: nil) ++  b' n :: nil by rewrite app_ass -app_comm_cons.
+              rewrite H3 b_updates_compositional b_updates_compositional -app_nil_end /= {H3}.
+              have H3: e1 ++ a n1 :: b n1 :: a n :: nil = (e1 ++ a n1 :: b n1 :: nil) ++ a n :: nil by rewrite app_ass -app_comm_cons.
+              rewrite H3 a_updates_compositional /= {H3}.
+              have H3: e1 ++ a n1 :: b n1 :: nil = (e1 ++ a n1 :: nil) ++ b n1 :: nil by rewrite app_ass -app_comm_cons.
+              rewrite H3 a_updates_compositional -app_nil_end /= {H3}.
+              by rewrite H1.                          
+            
             rewrite H2 in H0.
             rewrite H2 in H1.
             rewrite b_updates_compositional -app_nil_end /= in H1.
             exists (e1 ++ a' n1 :: a n :: nil).
             split.
+            by apply exec_trans; first by apply trans_a'a.
+            have H3: e' ++ a' n0 :: b' n :: nil = (e' ++ a' n0 :: nil) ++ b' n :: nil by rewrite app_ass -app_comm_cons.
+            rewrite H3 b_updates_compositional b_updates_compositional -app_nil_end /= {H3}.
             have H3: e1 ++ a' n1 :: a n :: nil = (e1 ++ a' n1 :: nil) ++ a n :: nil by rewrite app_ass -app_comm_cons.
+            rewrite H3 {H3}.
+            by rewrite a_updates_compositional H1.
             
+            rewrite H2 in H1.
+            rewrite H2 in H0.
+            exists (e1 ++ b n1 :: a n :: nil).
+            rewrite a_updates_compositional -app_nil_end /= in H1.
+            split.
+            apply exec_trans.
+            apply trans_ba.
+            done.
             
-               exists (a' n0 :: b n0 :: a n :: nil).
-               
-               
-               
-               
+            have H3: e' ++ a' n0 :: b' n :: nil = (e' ++ a' n0 :: nil) ++ b' n :: nil by rewrite app_ass -app_comm_cons.
+            rewrite H3 b_updates_compositional /= {H3}.
+            have H3: e1 ++ b n1 :: a n :: nil = (e1 ++ b n1 :: nil) ++ a n :: nil by rewrite app_ass -app_comm_cons.       
+            rewrite H3 a_updates_compositional a_updates_compositional -app_nil_end /= {H3}.
+            by rewrite H1.
+                        
+            rewrite H2 in H0.
+            rewrite H2 in H1.
+            inversion H0; first by contradict H4; apply app_cons_not_nil.
+            have H5: a n2 :: nil = nil ++ a n2 :: nil by done.
+            rewrite H5 {H5} in H4.
+            apply app_inj_tail in H4.
+            by elim: H4 => H4 H5.
+            have H5: x :: nil = nil ++ x :: nil by done.
+            rewrite H5 {H5} in H4.
+            apply app_inj_tail in H4.
+            by elim: H4 => H4 H5.
+            have H5: e2 ++ c0 :: c' :: nil = (e2 ++ c0 :: nil) ++ c' :: nil by rewrite app_ass -app_comm_cons.
+            rewrite H5 {H5} in H4.            
+            apply app_inj_tail in H4.
+            elim: H4 => H4 H5.
+            rewrite H5 {H5 c'} in trans1.
+            move: execution1 H4 trans1.
+            case c0 => [H3 H4 H5|n2 H3 H4 H5|n2 H3 H4 H5|n2 H3 H4 H5|n2 H3 H4 H5].
+            - exists (e2 ++ x :: a n :: nil).
+              split.
+              apply exec_trans.
+              apply trans_xa.
+              done.
+              have H6: e2 ++ x :: a n :: nil = (e2 ++ x :: nil) ++ a n :: nil by rewrite app_ass -app_comm_cons.
+              rewrite H6 H4 {H6}.
+              rewrite a_updates_compositional -app_nil_end in H1.
+              rewrite a_updates_compositional /=.
+              have H6: e' ++ a' n0 :: b' n :: nil = (e' ++ a' n0 :: nil) ++ b' n :: nil by rewrite app_ass -app_comm_cons.
+              by rewrite H6 b_updates_compositional H1.
+              
+              by inversion H5.
 
-exists (e0 ++ b' n :: a' n :: nil).
-             
-               
-               * rewrite -H3 app_ass in H0.
-                 have H8: (x :: nil) ++ b' n0 :: nil = x :: b' n0 :: nil by done.
-                 rewrite H8 {H8} in H0.
-                 
-                 
-
-rewrite -H3 in H0.
-               * rewrite -H2.
-                 have H4: (e0 ++ x :: nil) ++ a n :: nil = e0 ++ x :: a n :: nil by rewrite -ass_app -app_comm_cons.
-                 rewrite H4 {H4}.
-                 apply exec_trans; first by apply trans_xa.
-                 by rewrite -H2 in execution1.
-               * by inversion H3.
-               * rewrite -H2.
-                 have H4: (e0 ++ a' n1 :: nil) ++ a n :: nil = e0 ++ a' n1 :: a n :: nil by rewrite -ass_app -app_comm_cons.
-                 rewrite H4 {H4}.
-                 apply exec_trans; first by apply trans_a'a.
-                 by rewrite H2.
-               * rewrite -H2.
-                 have H4: (e0 ++ b n1 :: nil) ++ a n :: nil = e0 ++ b n1 :: a n :: nil by rewrite -ass_app -app_comm_cons.
-                 rewrite H4 {H4}.
-                 inversion H3; subst.
-                 by apply exec_trans; first by apply trans_ba.
-               * by inversion H3.
-               
-               
-               
-apply exec_trans.
-apply trans_ab.
-
-             exists (e1 ++ b' n0 :: a' n0 :: a n :: nil).
-               
-             
-             
-               
-           
-
-
-inversion trans0.
-         subst.
-         exists e0; split; first done.
-         rewrite -H1 {H1}.
-         Focus 2.
-       - 
-       
-       rewrite 
-
-       rew
-       rewrite -ass_app.
-       rewrite -app_comm_cons.
-
-apply app_inj_tail in H1.
-     + have H2: e' = e'.
-       
-
-move => IH.
-     
-     rewrite H {H} => H.
-     
-     
-   
-   
-       exists (c :: nil).
-   split; first by rewrite /= in H1; apply H1.
-   
-
-case H: e => [|c' e0].
-   * 
-
-Admitted.
+              exists (e2 ++ a' n2 :: a n :: nil).
+              split.
+              apply exec_trans.
+              apply trans_a'a.
+              done.
+              have H6: e' ++ a' n0 :: b' n :: nil = (e' ++ a' n0 :: nil) ++ b' n :: nil by rewrite app_ass -app_comm_cons.
+              rewrite H6 b_updates_compositional /= {H6}.
+              have H6: e2 ++ a' n2 :: a n :: nil = (e2 ++ a' n2 :: nil) ++ a n :: nil by rewrite app_ass -app_comm_cons. 
+              rewrite H6 a_updates_compositional H4 /= {H6}.
+              by rewrite H1 a_updates_compositional -app_nil_end.
+              
+              exists (e2 ++ b n2 :: a n :: nil).
+              split.
+              apply exec_trans.
+              apply trans_ba.
+              done.
+              
+              have H6: e' ++ a' n0 :: b' n :: nil = (e' ++ a' n0 :: nil) ++ b' n :: nil by rewrite app_ass -app_comm_cons.
+              rewrite H6 b_updates_compositional /= {H6}.
+              have H6: e2 ++ b n2 :: a n :: nil = (e2 ++ b n2 :: nil) ++ a n :: nil by rewrite app_ass -app_comm_cons.
+              rewrite H6 H4 a_updates_compositional /=.
+              by rewrite H1 a_updates_compositional -app_nil_end.
+              
+              by inversion H5.
+              
+            
