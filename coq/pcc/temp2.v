@@ -132,17 +132,6 @@ case: c => [|n|n|n|n]; case: c' => [|n0|n0|n0|n0]; (try rewrite /= IH -app_nil_e
 - by rewrite /= IH.
 Qed.
 
-
-Lemma b_updates_ignores_x : forall `(execution e), b_updates (e ++ x :: nil) = b_updates e.
-Proof.
-Admitted.
-
-Lemma b_updates_ignores_an : forall `(execution e) (n : nat), b_updates (e ++ a n :: nil) = b_updates e.
-Admitted.
-
-Lemma b_updates_ignores_a'n : forall `(execution e) (n : nat), b_updates (e ++ a' n :: nil) = b_updates e.
-Admitted.
-
 Lemma exists_exec_with_eq_bs :
   forall `(execution e), exists e', (execution e') /\ b_updates e = a_updates e'.
 Proof.
@@ -201,17 +190,17 @@ Proof.
        - exists e0; split; first done.
          have H2: e' ++ c' :: x :: nil = (e' ++ c' :: nil) ++ x :: nil by rewrite -ass_app -app_comm_cons.
          rewrite H2 {H2}.         
-         by rewrite b_updates_ignores_x. 
+         by rewrite b_updates_compositional -app_nil_end.                  
        - exists e0; split; first done.
          rewrite -H1 {H1}.
          have H2: e' ++ c' :: a n :: nil = (e' ++ c' :: nil) ++ a n :: nil by rewrite -ass_app -app_comm_cons.
          rewrite H2 {H2}.
-         by rewrite b_updates_ignores_an.
+         by rewrite b_updates_compositional -app_nil_end.
        - exists e0; split; first done.
          rewrite -H1 {H1}.
          have H2: e' ++ c' :: a' n :: nil = (e' ++ c' :: nil) ++ a' n :: nil by rewrite -ass_app -app_comm_cons.
          rewrite H2 {H2}.
-         by rewrite b_updates_ignores_a'n.
+         by rewrite b_updates_compositional -app_nil_end.
        - inversion trans0; subst.
          pose proof rev_case e0.
          elim: H2 => H2.
