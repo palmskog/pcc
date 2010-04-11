@@ -26,7 +26,6 @@ Inductive trans : configuration -> configuration -> Prop :=
 (* (b' n) can only go to (a' n). *)
 | trans_b'a'  : forall n, trans (b' n) (a' n).
 
-
 Hint Resolve trans_xx trans_xa trans_xb' : transitions.
 Hint Resolve trans_ab trans_a'x trans_a'a trans_a'b' : transitions.
 Hint Resolve trans_bx trans_ba trans_bb' trans_b'a' : transitions.
@@ -128,10 +127,7 @@ Proof. by move => e c c' c''; rewrite -ass_app -app_comm_cons. Qed.
 Lemma coalesce_long_tail : forall (e : list configuration) (c c' c'' : configuration), (e ++ c :: nil) ++ c' :: c'' :: nil = e ++ c :: c' :: c'' :: nil.
 Proof. by move => e c c' c''; rewrite -ass_app -app_comm_cons. Qed.
 
-Lemma nil_front : forall (e : list configuration), e = nil ++ e.
-Proof. done. Qed.
-
-Lemma exists_exec_with_eq_bs : forall `(execution e), exists e', (execution e') /\ b_updates e = a_updates e'.
+Theorem exists_exec_with_eq_bs : forall `(execution e), exists e', (execution e') /\ b_updates e = a_updates e'.
 Proof.
  elim/rev_ind => [H|c e]; first by exists nil; split; [ apply exec_nil | done ].
  pose proof rev_case e as H; elim: H => H.
@@ -150,7 +146,7 @@ Proof.
    * by exists nil; split; [ apply exec_nil | done ].
    * by exists nil; split; [ apply exec_nil | done ].
    * by exists (x :: nil); split; [ apply exec_x | done ].
-   * do 2!rewrite -coalesce_tail in H1.     
+   * rewrite -2!coalesce_tail in H1.     
      apply app_inj_tail in H1.
      elim: H1 => H1 H2.
      apply app_inj_tail in H1.
@@ -170,22 +166,19 @@ Proof.
      + exists e0; split; first done. 
        by rewrite -H1 -coalesce_tail b_updates_comp -app_nil_end.
      + inversion trans0; subst.
-       pose proof rev_case e0 as H2.
-       elim: H2 => H2.
+       pose proof rev_case e0 as H2; elim: H2 => H2.
        - subst; exists (a n :: nil); split; first by apply exec_a. 
          by rewrite -coalesce_tail b_updates_comp H1.
-       - elim: H2 => e1 H2.
-         elim: H2.
+       - elim: H2 => e1 H2; elim: H2.
          case => [|n0|n0|n0|n0] H2.
          * rewrite H2 {H2 e0} in H0 H1.
            exists (e1 ++ x :: a n :: nil). 
            split; first by apply exec_trans; [ apply trans_xa | done ].
-           do 2!rewrite -coalesce_tail; rewrite b_updates_comp H1.
-           by do 3!rewrite a_updates_comp.
+           by rewrite -2!coalesce_tail b_updates_comp H1 3!a_updates_comp.
          * rewrite H2 {H2 e0} in H0 H1.
            exists (e1 ++ a n0 :: b n0 :: a n :: nil); split.
            + rewrite -coalesce_long_tail.
-             apply exec_trans; first by apply trans_ba.             
+             apply exec_trans; first by apply trans_ba.
              by rewrite coalesce_tail; apply exec_trans; first by apply trans_ab.
            + rewrite -coalesce_tail_long -coalesce_tail.
              rewrite a_updates_comp b_updates_comp -coalesce_tail.
@@ -193,14 +186,12 @@ Proof.
          * rewrite H2 {H2 e0} in H0 H1.
            exists (e1 ++ a' n0 :: a n :: nil).
            split; first by apply exec_trans; [ apply trans_a'a | done ].
-           do 2!rewrite -coalesce_tail.
-           by rewrite a_updates_comp b_updates_comp H1.           
+           by rewrite -2!coalesce_tail a_updates_comp b_updates_comp H1.
          * rewrite H2 {H2 e0} in H0 H1.
            exists (e1 ++ b n0 :: a n :: nil).
            split; first by apply exec_trans; [ apply trans_ba | done ].
-           do 2!rewrite -coalesce_tail.
-           by rewrite a_updates_comp b_updates_comp H1.
-         * rewrite H2 {H2 e0} in H0 H1.                     
+           by rewrite -2!coalesce_tail a_updates_comp b_updates_comp H1.
+         * rewrite H2 {H2 e0} in H0 H1.
            rewrite b_updates_comp a_updates_comp -app_nil_end -app_nil_end in H1.
            exists (e1 ++ a n :: b n :: nil).
            inversion H0; first by contradict H3; apply app_cons_not_nil.
@@ -221,19 +212,17 @@ Proof.
                case: c => [|n1|n1|n1|n1] H2 H3.
                * rewrite -H2 coalesce_tail.
                  apply exec_trans; first by apply trans_xa.
-                 by rewrite -H2 in execution1.               
+                 by rewrite -H2 in execution1.
                * by inversion H3.
-               * rewrite -H2 coalesce_tail.                                
+               * rewrite -H2 coalesce_tail.
                  apply exec_trans; first by apply trans_a'a.
                  by rewrite H2.
                * rewrite -H2 coalesce_tail. 
                  apply exec_trans; first by apply trans_ba.
                  by rewrite H2.
                * by inversion H3.               
-             - do 2!rewrite -coalesce_tail.
-               rewrite b_updates_comp b_updates_comp -app_nil_end.
-               rewrite a_updates_comp a_updates_comp -app_nil_end.
-               by rewrite H1.               
+             - rewrite -2!coalesce_tail b_updates_comp b_updates_comp.
+               by rewrite a_updates_comp a_updates_comp -2!app_nil_end H1.
      + inversion trans0; subst.
        - pose proof rev_case e0 as H2.
          elim: H2 => H2.
@@ -292,21 +281,17 @@ Proof.
                  + by inversion H3.
                * rewrite a_updates_comp -app_nil_end in H1.
                  by rewrite -coalesce_tail a_updates_comp b_updates_comp H1.
-       - pose proof rev_case e0 as H2.
-         elim: H2 => H2.
+       - pose proof rev_case e0 as H2; elim: H2 => H2.
          * subst; exists (a n :: nil); split; first by apply exec_a. 
            by rewrite -coalesce_tail b_updates_comp H1.
-         * elim: H2 => e1 H2.
-           elim: H2.
+         * elim: H2 => e1 H2; elim: H2.
            case => [|n1|n1|n1|n1] H2.
            + exists (e1 ++ x :: a n :: nil).
              rewrite H2 {H2} in H0 H1.
              split; first by apply exec_trans; [ apply trans_xa | done ].
-             do 2!rewrite -coalesce_tail.
-             by rewrite a_updates_comp b_updates_comp H1.             
+             by rewrite -2!coalesce_tail a_updates_comp b_updates_comp H1.
            + rewrite H2 {H2 e0} in H0 H1.
-             exists (e1 ++ a n1 :: b n1 :: a n :: nil).
-             split.
+             exists (e1 ++ a n1 :: b n1 :: a n :: nil); split.             
              - rewrite -coalesce_long_tail.
                apply exec_trans; first by apply trans_ba.
                rewrite coalesce_tail.
@@ -322,7 +307,7 @@ Proof.
              exists (e1 ++ b n1 :: a n :: nil).
              split; first by apply exec_trans; first by apply trans_ba.
              by rewrite -2!coalesce_tail a_updates_comp b_updates_comp H1.
-           + rewrite H2 {H2 e0} in H0 H1.            
+           + rewrite H2 {H2 e0} in H0 H1.
              inversion H0; first by contradict H3; apply app_cons_not_nil.
              - change (a n2 :: nil) with (nil ++ a n2 :: nil) in H3.
                apply app_inj_tail in H3.
@@ -350,21 +335,17 @@ Proof.
                  rewrite a_updates_comp -app_nil_end in H1.
                  by rewrite -2!coalesce_tail a_updates_comp b_updates_comp H1 H3.
                * by inversion H4.
-       - pose proof rev_case e0 as H2.
-         elim: H2 => H2.
-         * subst; exists (a n :: nil); split; first by apply exec_a.
+       - pose proof rev_case e0 as H2; elim: H2 => H2.
+         * subst; exists (a n :: nil); split; first by apply exec_a. 
            by rewrite -coalesce_tail b_updates_comp H1.
-         * elim: H2 => e1 H2.
-           elim: H2.
+         * elim: H2 => e1 H2; elim: H2.
            case => [|n1|n1|n1|n1] H2.
            + exists (e1 ++ x :: a n :: nil).
              rewrite H2 {H2} in H0 H1.
              split; first by apply exec_trans; [ apply trans_xa | done ].
-             do 2!rewrite -coalesce_tail.
-             by rewrite a_updates_comp b_updates_comp H1.             
+             by rewrite -2!coalesce_tail a_updates_comp b_updates_comp H1.
            + rewrite H2 {H2 e0} in H0 H1.
-             exists (e1 ++ a n1 :: b n1 :: a n :: nil).
-             split.
+             exists (e1 ++ a n1 :: b n1 :: a n :: nil); split.             
              - rewrite -coalesce_long_tail.
                apply exec_trans; first by apply trans_ba.
                rewrite coalesce_tail.
@@ -380,7 +361,7 @@ Proof.
              exists (e1 ++ b n1 :: a n :: nil).
              split; first by apply exec_trans; first by apply trans_ba.
              by rewrite -2!coalesce_tail a_updates_comp b_updates_comp H1.
-           + rewrite H2 {H2 e0} in H0 H1.            
+           + rewrite H2 {H2 e0} in H0 H1.
              inversion H0; first by contradict H3; apply app_cons_not_nil.
              - change (a n2 :: nil) with (nil ++ a n2 :: nil) in H3.
                apply app_inj_tail in H3.
