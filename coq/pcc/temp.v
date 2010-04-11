@@ -5,8 +5,8 @@ Variable A : Set.
 Variable f : A -> bool.
 
 Inductive prefix : list A -> list A -> Prop :=
-| prefix_nil : forall l, prefix nil l
-| prefix_next : forall (a: A) l l', prefix l l' -> prefix (a :: l) (a :: l').
+ | prefix_nil : forall l, prefix nil l
+ | prefix_next : forall (a: A) l l', prefix l l' -> prefix (a :: l) (a :: l').
 
 Fixpoint filter (l : list A) : list A :=
   match l with
