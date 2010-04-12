@@ -121,35 +121,35 @@ Proof. by move => e c c' c''; rewrite -ass_app -app_comm_cons. Qed.
 Lemma coalesce_long_tail : forall (e : list configuration) (c c' c'' : configuration), (e ++ c :: nil) ++ c' :: c'' :: nil = e ++ c :: c' :: c'' :: nil.
 Proof. by move => e c c' c''; rewrite -ass_app -app_comm_cons. Qed.
 
-Lemma exists_exec_n_remain : forall `(execution (e' ++ c' :: nil)) `(execution e0) `(b_updates (e' ++ c' :: nil) = a_updates e0) (n : nat), exists e'0 : list configuration, execution e'0 /\ b_updates (e' ++ c' :: nil) ++ n :: nil = a_updates e'0.
+Lemma exists_exec_n_remain : forall `(execution e) `(execution e') `(b_updates e = a_updates e') (n : nat), exists e0 : list configuration, execution e0 /\ b_updates e ++ n :: nil = a_updates e0.
 Proof.
- move => e' c' execution0 e0 H0 H1 n.
- pose proof rev_case e0 as H2.
- elim: H2 => H2; first by subst; exists (a n :: nil); split; [ apply exec_a | rewrite H1 ]. 
- elim: H2 => e1 H2; elim: H2.
- case => [|n'|n'|n'|n'] H2.
- - rewrite H2 {H2 e0} in H0 H1.
-   exists (e1 ++ x :: a n :: nil). 
+ move => e execution0 e' H H0 n.
+ pose proof rev_case e' as H1.
+ elim: H1 => H1; first by subst; exists (a n :: nil); split; [ apply exec_a | rewrite H0 ]. 
+ elim: H1 => e0 H1; elim: H1.
+ case => [|n'|n'|n'|n'] H1.
+ - rewrite H1 {H1 e'} in H H0.
+   exists (e0 ++ x :: a n :: nil). 
    split; first by apply exec_trans; [ apply trans_xa | done ].
-   by rewrite H1 -coalesce_tail 3!a_updates_comp.
- - rewrite H2 {H2 e0} in H0 H1.
-   exists (e1 ++ a n' :: b n' :: a n :: nil); split.
+   by rewrite H0 -coalesce_tail 3!a_updates_comp.
+ - rewrite H1 {H1 e'} in H H0.
+   exists (e0 ++ a n' :: b n' :: a n :: nil); split.
    * rewrite -coalesce_long_tail.
      apply exec_trans; first by apply trans_ba.
      by rewrite coalesce_tail; apply exec_trans; first by apply trans_ab.
-   * by rewrite -coalesce_tail_long -coalesce_tail 2!a_updates_comp H1 -app_nil_end.
- - rewrite H2 {H2 e0} in H0 H1.
-   exists (e1 ++ a' n' :: a n :: nil).
+   * by rewrite -coalesce_tail_long -coalesce_tail 2!a_updates_comp H0 -app_nil_end.
+ - rewrite H1 {H1 e'} in H H0.
+   exists (e0 ++ a' n' :: a n :: nil).
    split; first by apply exec_trans; [ apply trans_a'a | done ].
-   by rewrite -coalesce_tail a_updates_comp H1.
- - rewrite H2 {H2 e0} in H0 H1.
-   exists (e1 ++ b n' :: a n :: nil).
+   by rewrite -coalesce_tail a_updates_comp H0.
+ - rewrite H1 {H1 e'} in H H0.
+   exists (e0 ++ b n' :: a n :: nil).
    split; first by apply exec_trans; [ apply trans_ba | done ].
-   by rewrite -coalesce_tail a_updates_comp H1.
- - rewrite H2 {H2 e0} in H0 H1.
-   rewrite a_updates_comp -app_nil_end in H1.
-   exists (e1 ++ a n :: nil).
-   inversion H0; first by contradict H2; apply app_cons_not_nil.
+   by rewrite -coalesce_tail a_updates_comp H0.
+ - rewrite H1 {H1 e'} in H H0.
+   rewrite a_updates_comp -app_nil_end in H0.
+   exists (e0 ++ a n :: nil).
+   inversion H; first by contradict H2; apply app_cons_not_nil.
    * change (a n0 :: nil) with (nil ++ a n0 :: nil) in H2.
      apply app_inj_tail in H2.
      by elim: H2 => H2 H3.
@@ -161,7 +161,7 @@ Proof.
      elim: H2 => H2 H3.
      rewrite H2 in execution1.
      rewrite H3 {H3} in trans0.
-     split; last by rewrite a_updates_comp H1.
+     split; last by rewrite a_updates_comp H0.
      move: H2 trans0.
      case: c => [|n0|n0|n0|n0] H2 H3.
      + rewrite -H2 coalesce_tail.
@@ -179,39 +179,25 @@ Qed.
 
 Theorem exists_exec_with_eq_bs : forall `(execution e), exists e', (execution e') /\ b_updates e = a_updates e'.
 Proof.
- elim/rev_ind => [H|c e]; first by exists nil; split; [ apply exec_nil | done ].
- pose proof rev_case e as H; elim: H => H.
- - rewrite H {H}.
-   case: c => [|n|n|n|n] H0 H1.
-   * by exists (x :: nil); split; [ apply exec_x | done ].
-   * by exists nil; split; [ apply exec_nil | done ].
-   * by exists nil; split; [ apply exec_nil | done ].
-   * by exists (a n :: nil); split; last done; inversion H1; apply exec_a.
-   * by exists (a n :: nil); split; last done; inversion H1; apply exec_a.
- - elim: H => e' H.
-   elim: H => c' H.
-   rewrite H {H} => IH.
-   rewrite coalesce_tail => H.
-   inversion H.
-   * by exists nil; split; [ apply exec_nil | done ].
-   * by exists nil; split; [ apply exec_nil | done ].
-   * by exists (x :: nil); split; [ apply exec_x | done ].
-   * rewrite -2!coalesce_tail in H1.     
-     apply app_inj_tail in H1.
-     elim: H1 => H1 H2.
-     apply app_inj_tail in H1.
-     elim: H1 => H1 H3.
-     move: execution0 trans0. 
-     rewrite H1 H2 H3 {H1 H2 H3 e e0 c'0 c0} => execution0 trans0.
-     pose proof execution0 as H0.
-     apply IH in H0.
-     elim: H0 => e0 H0 {IH}.
-     elim: H0 => H0 H1.
-     move: H H1 trans0.
-     case: c => [|n|n|n|n] H H1 trans0.
-     + by exists e0; split; first done; rewrite -coalesce_tail b_updates_comp -app_nil_end.
-     + by exists e0; split; first done; rewrite -H1 -coalesce_tail b_updates_comp -app_nil_end.
-     + by exists e0; split; first done; rewrite -H1 -coalesce_tail b_updates_comp -app_nil_end.
-     + by rewrite -coalesce_tail b_updates_comp; apply (exists_exec_n_remain execution0 H0 H1 n).
-     + by rewrite -coalesce_tail b_updates_comp; apply (exists_exec_n_remain execution0 H0 H1 n).
+ elim/rev_ind => [H|c e IH H]; first by exists nil; split; [ apply exec_nil | done ].
+ inversion H.
+ - by exists nil; split; [ apply exec_nil | done ].
+ - by exists nil; split; [ apply exec_nil | done ].
+ - by exists (x :: nil); split; [ apply exec_x | done ].
+ - rewrite -coalesce_tail in H1.     
+   apply app_inj_tail in H1.
+   elim: H1 => H1 H2.     
+   move: execution0 trans0 H IH. 
+   rewrite -coalesce_tail H1 H2 {H1 H2 c'} => execution0 trans0 H IH.
+   pose proof execution0 as H0.
+   apply IH in H0.
+   elim: H0 => e' H0 {IH}.
+   elim: H0 => H0 H1.
+   move: H H1 trans0.
+   case: c => [|n|n|n|n] H H1 trans0.
+   * by exists e'; split; first done; rewrite b_updates_comp H1 -app_nil_end.
+   * by exists e'; split; first done; rewrite b_updates_comp H1 -app_nil_end.
+   * by exists e'; split; first done; rewrite b_updates_comp H1 -app_nil_end.
+   * by rewrite b_updates_comp; apply (exists_exec_n_remain execution0 H0 H1 n).
+   * by rewrite b_updates_comp; apply (exists_exec_n_remain execution0 H0 H1 n).
 Qed.
