@@ -149,7 +149,7 @@ Proof.
    by rewrite -coalesce_tail a_updates_comp H1.
  - rewrite H2 {H2 e0} in H0 H1.
    rewrite a_updates_comp -app_nil_end in H1.
-   exists (e1 ++ a n :: b n :: nil).
+   exists (e1 ++ a n :: nil).
    inversion H0; first by contradict H2; apply app_cons_not_nil.
    * change (a n0 :: nil) with (nil ++ a n0 :: nil) in H2.
      apply app_inj_tail in H2.
@@ -163,8 +163,7 @@ Proof.
      rewrite H2 in execution1.
      rewrite H3 {H3} in trans0.
      split.
-     + apply exec_trans; first by apply trans_ab.
-       move: H2 trans0.
+     + move: H2 trans0.
        case: c => [|n0|n0|n0|n0] H2 H3.
        - rewrite -H2 coalesce_tail.
          apply exec_trans; first by apply trans_xa.
@@ -177,7 +176,7 @@ Proof.
          apply exec_trans; first by apply trans_ba.
          by rewrite H2.
        - by inversion H3.               
-     + by rewrite -coalesce_tail 2!a_updates_comp H1 -app_nil_end.
+     + by rewrite a_updates_comp H1.
 Qed.
 
 Theorem exists_exec_with_eq_bs : forall `(execution e), exists e', (execution e') /\ b_updates e = a_updates e'.
