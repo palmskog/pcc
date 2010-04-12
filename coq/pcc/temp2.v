@@ -137,8 +137,7 @@ Proof.
    * rewrite -coalesce_long_tail.
      apply exec_trans; first by apply trans_ba.
      by rewrite coalesce_tail; apply exec_trans; first by apply trans_ab.
-   * rewrite -coalesce_tail_long -coalesce_tail.
-     by rewrite a_updates_comp a_updates_comp H1 -app_nil_end.
+   * by rewrite -coalesce_tail_long -coalesce_tail 2!a_updates_comp H1 -app_nil_end.
  - rewrite H2 {H2 e0} in H0 H1.
    exists (e1 ++ a' n' :: a n :: nil).
    split; first by apply exec_trans; [ apply trans_a'a | done ].
@@ -162,21 +161,20 @@ Proof.
      elim: H2 => H2 H3.
      rewrite H2 in execution1.
      rewrite H3 {H3} in trans0.
-     split.
-     + move: H2 trans0.
-       case: c => [|n0|n0|n0|n0] H2 H3.
-       - rewrite -H2 coalesce_tail.
-         apply exec_trans; first by apply trans_xa.
-         by rewrite -H2 in execution1.
-       - by inversion H3.
-       - rewrite -H2 coalesce_tail.
-         apply exec_trans; first by apply trans_a'a.
-         by rewrite H2.
-       - rewrite -H2 coalesce_tail. 
-         apply exec_trans; first by apply trans_ba.
-         by rewrite H2.
-       - by inversion H3.               
-     + by rewrite a_updates_comp H1.
+     split; last by rewrite a_updates_comp H1.
+     move: H2 trans0.
+     case: c => [|n0|n0|n0|n0] H2 H3.
+     + rewrite -H2 coalesce_tail.
+       apply exec_trans; first by apply trans_xa.
+       by rewrite -H2 in execution1.
+     + by inversion H3.
+     + rewrite -H2 coalesce_tail.
+       apply exec_trans; first by apply trans_a'a.
+       by rewrite H2.
+     + rewrite -H2 coalesce_tail. 
+       apply exec_trans; first by apply trans_ba.
+       by rewrite H2.
+     + by inversion H3.
 Qed.
 
 Theorem exists_exec_with_eq_bs : forall `(execution e), exists e', (execution e') /\ b_updates e = a_updates e'.
@@ -211,14 +209,9 @@ Proof.
      elim: H0 => H0 H1.
      move: H H1 trans0.
      case: c => [|n|n|n|n] H H1 trans0.
-     + exists e0; split; first done. 
-       by rewrite -coalesce_tail b_updates_comp -app_nil_end.
-     + exists e0; split; first done.
-       by rewrite -H1 -coalesce_tail b_updates_comp -app_nil_end.
-     + exists e0; split; first done. 
-       by rewrite -H1 -coalesce_tail b_updates_comp -app_nil_end.
-     + rewrite -coalesce_tail b_updates_comp /=.              
-       by apply (exists_exec_n_remain execution0 H0 H1 n).
-     + rewrite -coalesce_tail b_updates_comp /=.              
-       by apply (exists_exec_n_remain execution0 H0 H1 n).
+     + by exists e0; split; first done; rewrite -coalesce_tail b_updates_comp -app_nil_end.
+     + by exists e0; split; first done; rewrite -H1 -coalesce_tail b_updates_comp -app_nil_end.
+     + by exists e0; split; first done; rewrite -H1 -coalesce_tail b_updates_comp -app_nil_end.
+     + by rewrite -coalesce_tail b_updates_comp; apply (exists_exec_n_remain execution0 H0 H1 n).
+     + by rewrite -coalesce_tail b_updates_comp; apply (exists_exec_n_remain execution0 H0 H1 n).
 Qed.
