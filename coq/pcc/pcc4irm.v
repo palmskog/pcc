@@ -11,6 +11,7 @@ Require Import Bool.
 Require Import Omega.
 Require Import Wf.
 Require Import Wellfounded.
+Require Import ssreflect.
 
 (******************************************************************************)
 (*                                                                            *)
@@ -394,7 +395,7 @@ Section basic_defs.
   
 End basic_defs.
 
-Notation "s '[' n ']'" := (nth n s undefval) (at level 90).
+Notation "s '[[' n ']]'" := (nth n s undefval) (at level 90).
 
 
 
@@ -525,7 +526,7 @@ Section program_model.
   Definition upd_sheap (h:heap) (cid:classid) (fid:fieldid) (v:jvalue) : heap :=
     (fst h, fun c f => if beq_nat c cid && beq_nat f fid then Some v else (snd h) c f).
   
-  Notation "ls '[' n '⟼' v ']'" := (upd ls n v) (at level 90).
+  Notation "ls '[[' n '⟼' v ']]'" := (upd ls n v) (at level 90).
   
   
   (* Activation records. *)
@@ -633,7 +634,7 @@ Inductive eeval : expr -> conf -> value -> Prop :=
   | e_plus         : forall c e1 e2 i j, eeval e1 c (intval i) -> eeval e2 c (intval j) -> eeval (plus e1 e2) c (intval (i + j))
   | e_guard_true   : forall c eg et ef v, eeval eg c (boolval true ) -> eeval et c v -> eeval (guarded eg et ef) c v
   | e_guard_other  : forall c eg et ef v, eeval eg c (boolval false) -> eeval ef c v -> eeval (guarded eg et ef) c v
-  | e_stack        : forall c n s, stack_of c = Some s -> eeval (stackexp n) c (s[n])
+  | e_stack        : forall c n s, stack_of c = Some s -> eeval (stackexp n) c (s[[n]])
   | e_local        : forall c n ls, lstore_of c = Some ls -> eeval (local n) c (ls n)
   | e_ghostvar     : forall c gvarid, eeval (ghost_var gvarid) c ((ghost_valuation_of c) gvarid)
   | e_nsfield_err1 : forall c e v f, eeval e c v -> (forall l, v <> refval l) -> eeval (nsfield e f) c undefval
@@ -657,7 +658,7 @@ Inductive eeval : expr -> conf -> value -> Prop :=
   | tr_astore : forall p c m pc s n ls v ar1 ar2,
       instr_at p c m pc = astore n ->
       ar1 = normal c m pc (v::s) ls ->
-      ar2 = normal c m (successor p c m pc) s (ls[n ⟼ v]) ->
+      ar2 = normal c m (successor p c m pc) s (ls[[n ⟼ v]]) ->
       artrans p ar1 ar2
   | tr_dup : forall p c m pc s ls v ar1 ar2,
       instr_at p c m pc = dup ->
@@ -1093,7 +1094,7 @@ assumption.
 
 (* stackexp *)
 inversion H; subst.
-exists (s[n]).
+exists (s[[n]]).
 apply e_stack.
 reflexivity.
 
@@ -1617,30 +1618,30 @@ Section weakest_precondition.
       | other     => a
     end.
   
-  Notation "c1 '[' c2 '∕' c3 ']'" := (subst  c1 c2 c3) (at level 90).
+  Notation "c1 '[[' c2 '∕' c3 ']]'" := (subst  c1 c2 c3) (at level 90).
   
   
   (* Only non-exceptional WP as of now. *)
   Definition wp (p:program) (c:classid) (m:methid) (l:label) : ast := 
     let a' := ast_at p c m (successor p c m l) in
     match (instr_at p c m l) with
-      | aload n        => unshift (a' [local n ∕ stackexp 0])
+      | aload n        => unshift (a' [[local n ∕ stackexp 0]])
       | astore n       => and (shift a') (eq (stackexp 0) (local n))
       | athrow         => tt
-      | dup            => unshift (a' [stackexp 1 ∕ stackexp 0])
-      | iadd           => (shift a') [plus (stackexp 0) (stackexp 1)  ∕  (stackexp 1)]
-      | getfield f     => unshift (a' [nsfield (stackexp 0) f ∕ stackexp 0])
-      | getstatic c f  => unshift (a' [sfield c f ∕ stackexp 0])
+      | dup            => unshift (a' [[stackexp 1 ∕ stackexp 0]])
+      | iadd           => (shift a') [[plus (stackexp 0) (stackexp 1)  ∕  (stackexp 1)]]
+      | getfield f     => unshift (a' [[nsfield (stackexp 0) f ∕ stackexp 0]])
+      | getstatic c f  => unshift (a' [[sfield c f ∕ stackexp 0]])
       | goto l'        => ast_at p c m l'
-      | iconst n       => unshift (a' [valexp (intval n) ∕ stackexp 0])
+      | iconst n       => unshift (a' [[valexp (intval n) ∕ stackexp 0]])
       | ifeq l'        => ifelse (eq (stackexp 0) (valexp (intval 0))) (shift (ast_at p c m l')) (shift (a'))
-      | putstatic c f  => (shift (a'))[stackexp 0 ∕ sfield c f]
-      | ldc v          => unshift (a' [valexp v ∕ stackexp 0])
+      | putstatic c f  => (shift (a'))[[stackexp 0 ∕ sfield c f]]
+      | ldc v          => unshift (a' [[valexp v ∕ stackexp 0]])
       | ret            => inv p
       | invoke c m     => inv p
       | exit           => tt
       | nop            => a'
-      | ghost_instr (g, e) => a' [e ∕ ghost_var g]
+      | ghost_instr (g, e) => a' [[e ∕ ghost_var g]]
     end.
 
 End weakest_precondition.
@@ -1901,7 +1902,7 @@ Lemma wp_correct_normal_aload : forall c m pc s ls h n ars gv,
     (* subcase: n0 = 0 *)
     simpl in H0.
     inversion H0; subst.
-    assert ((ls0 n::s)[0] = ls0 n).
+    assert ((ls0 n::s)[[0]] = ls0 n).
       simpl.
       reflexivity.
     rewrite <- H1.
@@ -1914,7 +1915,7 @@ Lemma wp_correct_normal_aload : forall c m pc s ls h n ars gv,
     inversion H0; subst.
     inversion H2.
     rewrite <- H3 in * |- *.
-    assert (s[n0] = ((ls n :: s)[S n0])).
+    assert (s[[n0]] = ((ls n :: s)[[S n0]])).
       simpl.
       reflexivity.
     rewrite H1.
@@ -2323,7 +2324,8 @@ Qed.
     intros.
     rewrite list_rearrange in H1.
     apply last_app_cons in H1.
-    rewrite H1 in * |- *.
+    subst.
+    (* rewrite H1 in * |- *. *)
 
     inversion H2; subst.
     
@@ -2348,7 +2350,7 @@ Qed.
         apply suffix_transitive with (bc := l); assumption.
         assumption.
         
-      elim H1; intros gv' H_ex_h.
+      elim H4; intros gv' H_ex_h.
       elim H_ex_h; intros h'; intros.
       exists gv'.
       exists h'.
@@ -2419,7 +2421,6 @@ Qed.
     rename H1 into H_atrans.
     inversion H0.
     subst.
-    rewrite H5 in *.
     inversion H_atrans; subst; inversion H; contradict H9; apply list_neq_length; simpl; omega.
     inversion H.
     contradict H16; apply list_neq_length; simpl; omega.
@@ -2667,7 +2668,8 @@ inversion H; subst.
             auto with datatypes.
             apply sub_execution with (suff := (gv, h, exceptional l :: ar :: ars) :: cnf' :: nil).
             assumption.
-          rewrite H_ex in * |- *.
+            subst.
+          (* rewrite H_ex in * |- *. *)
           rewrite list_rearrange in H_sub_exec.
           apply sub_execution with (suff := x0).
           auto with datatypes.
@@ -2830,8 +2832,8 @@ Section contracts.
     match c with
       | (gv, h, normal c m pc s ls :: ars) =>
         match (instr_at p c m pc) with
-          | invoke c' m' => Some (bef_event c' m' (s[0]))
-          | ret => Some (aft_event c m (s[0]))
+          | invoke c' m' => Some (bef_event c' m' (s[[0]]))
+          | ret => Some (aft_event c m (s[[0]]))
           | _ => None
         end
       | (gv, h, exceptional o :: ars) => None (* add exc_event *)
@@ -3117,7 +3119,16 @@ assumption.
 assumption.
 
 rewrite list_rearrange.
-rewrite gus_eq_seen_gus.
+rewrite -app_nil_end.
+
+Check gus_eq_seen_gus.
+
+have H3: (e ++ (gv, h, normal c m pc s ls :: ars0)
+  :: (upd_gv gv gid v, h, normal c m (successor p c m pc) s ls :: ars0) :: nil 
+  =
+((e ++ (gv, h, normal c m pc s ls :: ars0)::nil) ++
+  (upd_gv gv gid v, h, normal c m (successor p c m pc) s ls :: ars0) :: nil)) by rewrite app_ass -app_comm_cons.
+rewrite H3 gus_eq_seen_gus {H3}.
 reflexivity.
 
 (* last is not a gu *)
@@ -3275,7 +3286,8 @@ assert (ghost_update_of p (gv, h, ars) = None).
     exists (instr_at p c m l); reflexivity.
   elim H_tmp; clear H_tmp; intros i H_tmp.
   apply instr_at_to_current with (p := (gv, h)) (s := s) (l1 := l0) (l := ars) in H_tmp.
-  rewrite H_tmp in * |- *.
+  rewrite H_tmp in H |- *.
+  (* rewrite H_tmp in * |- *. *)
   destruct i; try reflexivity.
   pose proof (H g).
   
@@ -3290,7 +3302,7 @@ destruct a; try reflexivity.
 assert (exists oi, instr_at p c m l = oi).
   exists (instr_at p c m l); reflexivity.
 elim H1; clear H1; intros i H1.
-rewrite H0 in *.
+rewrite H0 in H |- *.
 reflexivity.
 
 repeat rewrite list_rearrange3.
@@ -3570,7 +3582,7 @@ inversion is_sec_state_trace0.
 inversion H4; subst.
 apply ssaft_done.
 
-rewrite list_rearrange3 in *.
+rewrite list_rearrange3 in is_sec_state_trace0.
 pose proof (sst_follows_ssus H2 H1).
 rewrite <- list_rearrange3 in H3.
 rewrite (H (s :: pref) suff ss) in H3.
@@ -3735,7 +3747,8 @@ Lemma trans_ghost_update :
 
 intros.
 inversion trans0; inversion H2; subst; try (
-  inversion H1; inversion H0; subst; inversion H; subst; rewrite H6 in *; discriminate).
+  inversion H1; inversion H0; subst; inversion H; rewrite H6 in H4 |- *; subst; done).
+
 inversion H0; subst.
 
 apply current_to_instr_at in H.
@@ -3982,7 +3995,7 @@ Qed.
     (* Case e'g = l' ++ a. *)
     elim H1; clear H1; intros e'g_pref H1.
     elim H1; clear H1; intros c' H1.
-    rewrite H1 in *.
+    rewrite H1 in H H0 |- *.
     
     intros.
     left.
@@ -4235,12 +4248,11 @@ Qed.
   Proof.
     intros.
     pose proof (ghost_inl_preservs_obs_trace_strong p (execution_of0) contr ghost_inlined0).
-    elim H; intros x [H0 [H1]].
-    intros.
-    exists x.
-    split; assumption.
+    elim: H => x H.
+    elim: H => H H0.
+    elim: H0 => H0.
+    by exists x.
   Qed.
-  
   
   Lemma ghost_adherence_impl_actual_adherence :
     forall p contr, (exists pg, ghost_inlined contr p pg /\ adheres_to pg contr) -> adheres_to p contr.
@@ -4366,7 +4378,7 @@ assumption.
 
 intro.
 elim H6.
-rewrite H7; reflexivity.
+rewrite H1; reflexivity.
 
 unfold violating_sec_state in H1.
 unfold violating_sec_state in H.
@@ -4536,9 +4548,10 @@ assert (normal_conf c').
     rewrite <- list_rearrange.
     reflexivity.
     inversion H_trans; subst.
-    inversion H8; subst;
-      injection H6; intros; subst;
-        rewrite H_curr_inst in * |-; try discriminate.
+    
+   inversion H8; subst;
+      injection H6; try rewrite H_curr_inst; done.
+
     inversion H6; subst.
     apply is_norm_conf.
 
@@ -4564,9 +4577,17 @@ apply H8 with (pref := exec') (suff := nil).
 rewrite <- list_rearrange.
 reflexivity.
 inversion H_trans; subst.
+
+(*::*)
+inversion H9; subst;
+injection H7; try rewrite H_curr_inst //=.
+rewrite H_curr_inst in * |-; try discriminate.
+
+(*--*)
 inversion H9; subst;
 injection H7; intros; subst;
 rewrite H_curr_inst in * |-; try discriminate.
+
 (**)
 inversion H7; subst.
 (* according to H_curr_inst and H17, gvar=gs and x=e*)
