@@ -4578,15 +4578,15 @@ rewrite <- list_rearrange.
 reflexivity.
 inversion H_trans; subst.
 
-(*::*)
 inversion H9; subst;
-injection H7; try rewrite H_curr_inst //=.
-rewrite H_curr_inst in * |-; try discriminate.
+injection H7; intros; subst; rewrite H_curr_inst in H4 H8 |-; try done.
 
 (*--*)
+(*
 inversion H9; subst;
 injection H7; intros; subst;
 rewrite H_curr_inst in * |-; try discriminate.
+*)
 
 (**)
 inversion H7; subst.
@@ -4715,9 +4715,10 @@ Qed.
       intros.
       elim H; intros annos H_po.
       unfold is_proof_outline in H_po.
-      elim H_po; intros pg.
-      intros [H_gi [H_annotated [H_lvpg]]].
-      intros.
+      elim H_po => pg H0.
+      elim: H0 => H_gi H0.
+      elim: H0 => H_annotated H0.
+      elim: H0 => H_lvpg H0.
       apply never_wrong_impl_adherence.
       exists pg.
       split.
