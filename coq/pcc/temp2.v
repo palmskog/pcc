@@ -1,4 +1,5 @@
 Require Import List.
+Require Import Omega.
 Require Import ssreflect.
 
 Inductive configuration : Set :=
@@ -35,8 +36,8 @@ Inductive execution : list configuration -> Prop :=
 | exec_a : forall n, execution (a n :: nil)
 | exec_x : execution (x :: nil)
 | exec_trans : forall `(trans c c')
-                 `(execution (e ++ (c :: nil))),
-	         execution (e ++ (c :: c' :: nil)).
+                 `(execution (e ++ c :: nil)),
+	         execution (e ++ c :: c' :: nil).
 
 Definition test_conf_list := x :: x :: (a 1) :: (b 1) :: x :: x :: (b' 5) :: nil.
 
@@ -195,4 +196,361 @@ Proof.
    * by exists e'; split; first done; rewrite b_updates_comp H3 -app_nil_end.
    * by rewrite b_updates_comp; apply (exists_exec_n_remain H2 H1).
    * by rewrite b_updates_comp; apply (exists_exec_n_remain H2 H1).
+Qed.
+
+
+
+  Lemma list_neq_length (A: Set) : forall l l': list A, length l <> length l' -> l <> l'.
+    intros.
+    contradict H.
+    subst.
+    reflexivity.
+  Qed.
+
+Lemma sub_execution : forall `(execution (e ++ c :: nil)), execution e.
+(* behöver ej induktion *)
+destruct e using rev_ind; intros.
+apply exec_nil.
+inversion execution0.
+contradict H0; apply app_cons_not_nil.
+contradict H0.
+apply list_neq_length.
+rewrite app_length.
+rewrite app_length.
+simpl.
+omega.
+contradict H0.
+apply list_neq_length.
+rewrite app_length.
+rewrite app_length.
+simpl; omega.
+rewrite -coalesce_tail in H0.
+apply app_inj_tail in H0.
+elim H0; intros.
+apply app_inj_tail in H.
+elim H; intros.
+subst.
+assumption.
+Qed.
+
+Lemma exec_impl_trans : forall `(execution (e ++ c :: c' :: nil)), trans c c'.
+intros.
+inversion execution0;
+  try (contradict H0; apply list_neq_length; simpl; rewrite app_length; simpl; omega).
+rewrite -2!coalesce_tail in H0.
+apply app_inj_tail in H0; elim H0; intros.
+apply app_inj_tail in H; elim H; intros.
+subst.
+assumption.
+Qed.
+
+
+Lemma exec_tail_cases : forall `(execution (e ++ c :: nil)),
+  (exists n, c = a  n /\ (b_updates (e ++ c :: nil)) ++ n :: nil = a_updates (e ++ c :: nil)) \/
+  (exists n, c = b  n /\ b_updates (e ++ c :: nil) = a_updates (e ++ c :: nil)) \/
+  (exists n, c = b' n /\ b_updates (e ++ c :: nil) = (a_updates e) ++ n :: nil) \/
+  (exists n, c = a' n /\ b_updates (e ++ c :: nil) = (a_updates e) ++ n :: nil) \/
+  (c = x /\ b_updates (e ++ c :: nil) = a_updates (e ++ c :: nil)).
+destruct e using rev_ind; intros.
+destruct c.
+right; right; right; right.
+split; reflexivity.
+left.
+exists n.
+split; reflexivity.
+right; right; right; left.
+simpl in execution0.
+inversion execution0.
+apply app_eq_unit in H0.
+elim H0; intros.
+elim H; intros.
+inversion H2.
+elim H; intros.
+inversion H2.
+simpl in execution0.
+inversion execution0.
+apply app_eq_unit in H0.
+elim H0; intros.
+elim H; intros.
+inversion H2.
+elim H; intros.
+inversion H2.
+simpl in execution0.
+inversion execution0.
+apply app_eq_unit in H0.
+elim H0; intros.
+elim H; intros.
+inversion H2.
+elim H; intros.
+inversion H2.
+
+(* inductive case *)
+pose proof (IHe x0 (sub_execution execution0)).
+clear IHe.
+rewrite coalesce_tail in execution0.
+apply exec_impl_trans in execution0.
+inversion execution0; subst.
+
+(* case x x *)
+right; right; right; right.
+split.
+reflexivity.
+elim H; clear H; intros H. elim H; clear H; intros n H; elim H; clear H; intros H_disc; discriminate.
+elim H; clear H; intros H. elim H; clear H; intros n H; elim H; clear H; intros H_disc; discriminate.
+elim H; clear H; intros H. elim H; clear H; intros n H; elim H; clear H; intros H_disc; discriminate.
+elim H; clear H; intros H. elim H; clear H; intros n H; elim H; clear H; intros H_disc; discriminate.
+elim H; clear H; intros.
+rewrite b_updates_comp; rewrite a_updates_comp.
+rewrite H0.
+reflexivity.
+
+(* case x a *)
+left.
+exists n.
+split; first by reflexivity.
+elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim H; clear H; intros.
+rewrite b_updates_comp a_updates_comp.
+rewrite H0.
+rewrite -app_nil_end.
+reflexivity.
+
+(* case x b' *)
+right; right; left.
+exists n.
+split; first by reflexivity.
+elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim H; clear H; intros.
+rewrite b_updates_comp a_updates_comp.
+rewrite H0.
+rewrite a_updates_comp.
+reflexivity.
+
+(* case a b *)
+right; left.
+exists n.
+split; first by reflexivity.
+elim H; clear H; intros.
+elim H; clear H; intros.
+elim H; clear H; intros.
+inversion H; subst.
+rewrite a_updates_comp.
+rewrite -H0.
+simpl.
+rewrite b_updates_comp.
+auto with datatypes.
+
+elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim H; clear H; intros H. discriminate.
+
+(* case a x *)
+right; right; right; right.
+split; first by reflexivity.
+elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim H; clear H; intros.
+elim H; clear H; intros.
+elim H; clear H; intros.
+inversion H; subst.
+rewrite a_updates_comp b_updates_comp.
+rewrite H0.
+rewrite a_updates_comp.
+reflexivity.
+elim H; clear H; intros H; discriminate.
+
+(* case a' a *)
+left.
+exists m.
+split; first by reflexivity.
+elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim H; clear H; intros.
+elim H; clear H; intros.
+elim H; clear H; intros.
+inversion H; subst.
+rewrite a_updates_comp.
+rewrite a_updates_comp.
+rewrite -H0.
+rewrite b_updates_comp.
+rewrite -app_nil_end.
+reflexivity.
+elim H; clear H; intros H; discriminate.
+
+(* case a' b' *)
+right; right; left.
+exists m.
+split; first by reflexivity.
+elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim H; clear H; intros.
+elim H; clear H; intros.
+elim H; clear H; intros.
+inversion H; subst.
+rewrite a_updates_comp.
+rewrite -H0.
+rewrite b_updates_comp.
+reflexivity.
+elim H; clear H; intros H; discriminate.
+
+(* case b x *)
+right; right; right; right.
+split; first by reflexivity.
+elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim H; clear H; intros.
+elim H; clear H; intros.
+elim H; clear H; intros.
+inversion H; subst.
+rewrite a_updates_comp b_updates_comp.
+rewrite -H0.
+rewrite b_updates_comp.
+reflexivity.
+elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim H; clear H; intros H; discriminate.
+
+(* case b a *)
+left.
+exists m.
+split; first by reflexivity.
+elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim H; clear H; intros.
+elim H; clear H; intros.
+elim H; clear H; intros.
+inversion H; subst.
+rewrite a_updates_comp b_updates_comp.
+rewrite -H0.
+rewrite b_updates_comp.
+rewrite -app_nil_end.
+reflexivity.
+elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim H; clear H; intros H; discriminate.
+
+(* case b b' *)
+right; right; left.
+exists m.
+split; first by reflexivity.
+elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim H; clear H; intros.
+elim H; clear H; intros.
+elim H; clear H; intros.
+inversion H; subst.
+rewrite b_updates_comp.
+rewrite -H0.
+rewrite b_updates_comp.
+reflexivity.
+elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim H; clear H; intros H; discriminate.
+
+(* case b' a' *)
+right; right; right; left.
+exists n.
+split; first by reflexivity.
+elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim H; clear H; intros.
+elim H; clear H; intros.
+elim H; clear H; intros.
+inversion H; subst.
+rewrite b_updates_comp a_updates_comp.
+simpl.
+rewrite -2!app_nil_end.
+rewrite -H0.
+reflexivity.
+elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim H; clear H; intros H; discriminate.
+Qed.
+
+  Lemma list_neq_length (A: Set) : forall l l': list A, length l <> length l' -> l <> l'.
+    intros.
+    contradict H.
+    subst.
+    reflexivity.
+  Qed.
+
+Theorem exists_exec_with_eq_bs_2 : forall `(execution e), exists e', (execution e') /\ b_updates e = a_updates e'.
+intros.
+pose proof (rev_case e) as H_ecase.
+elim H_ecase; clear H_ecase; intros; subst.
+exists nil; split; [ apply exec_nil | reflexivity ].
+elim H; clear H; intros e0 H.
+elim H; clear H; intros c H.
+subst.
+pose proof (exec_tail_cases execution0).
+elim H; clear H; intros.
+(* FALL 1 *)
+exists e0.
+split.
+apply sub_execution in execution0; assumption.
+elim H; clear H; intros.
+elim H; clear H; intros.
+subst.
+assert (forall l, a_updates (l ++ a x0 :: nil) = (a_updates l) ++ x0 :: nil).
+  induction l.
+  reflexivity.
+  simpl.
+  rewrite IHl.
+  destruct a0; reflexivity.
+rewrite H in H0.
+apply app_inj_tail in H0.
+elim H0; intros.
+assumption.
+
+(* FALL 2 *)
+elim H; clear H; intros.
+exists (e0 ++ c :: nil).
+split.
+assumption.
+elim H; clear H; intros.
+elim H; clear H; intros.
+assumption.
+
+(* FALL 3 *)
+elim H; clear H; intros.
+elim H; clear H; intros.
+elim H; clear H; intros.
+subst.
+exists ((e0 ++ b' x0 :: nil) ++ (a' x0 :: nil)).
+split.
+rewrite app_ass.
+simpl.
+apply exec_trans.
+apply trans_b'a'.
+assumption.
+rewrite H0.
+rewrite a_updates_comp.
+simpl.
+rewrite a_updates_comp.
+simpl.
+rewrite -app_nil_end.
+reflexivity.
+(* FALL 4 *)
+elim H; clear H; intros.
+elim H; clear H; intros.
+elim H; clear H; intros.
+exists (e0 ++ c :: nil).
+split.
+assumption.
+subst.
+rewrite H0.
+rewrite a_updates_comp.
+reflexivity.
+(* FALL 5 *)
+elim H; clear H; intros.
+exists (e0 ++ c :: nil).
+split.
+assumption.
+assumption.
 Qed.

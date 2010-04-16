@@ -1,4 +1,4 @@
-(* SS Reflect tutorial: http://inria.ccsd.cnrs.fr/docs/00/25/94/78/PDF/RR-6455.pdf *)
+(* SS_Reflect tutorial: http://inria.ccsd.cnrs.fr/docs/00/25/94/78/PDF/RR-6455.pdf *)
 
 (******************************************************************************)
 (*                                                                            *)
@@ -20,6 +20,17 @@ Require Import Wellfounded.
 Section list_aux.
   
   Set Implicit Arguments.
+  
+  Lemma app_cons_has_head (A: Set) : forall (a : A) l l', exists a', exists l'', l ++ a :: l' = a' :: l''.
+  Proof.
+    intros.
+    destruct l.
+    exists a; exists l'.
+    reflexivity.
+    exists a0; exists (l ++ a :: l').
+    reflexivity.
+  Qed.
+  
   
   Lemma nil_or_app (A: Set) : forall l, l = nil \/ exists l', exists a: A, l = l' ++ a :: nil.
     intros.
@@ -71,7 +82,7 @@ Section list_aux.
     auto with datatypes.
   Qed.
   
-  Lemma list_rearrange3 (A: Set) : forall l (a b: A), (a :: l) ++ b :: nil = a :: l ++ b :: nil.
+  Lemma list_rearrange3 (A: Set) : forall l l' (a : A), (a :: l) ++ l' = a :: l ++ l'.
     reflexivity.
   Qed.
   
@@ -85,6 +96,18 @@ Section list_aux.
   Inductive prefix (A: Set) : list A -> list A -> Prop :=
   | prefix_nil : forall l, prefix nil l
   | prefix_next : forall (a: A) l l', prefix l l' -> prefix (a :: l) (a :: l').
+  
+
+  Lemma prefix_firstn (A: Set) : forall n (l : list A), n <= length l -> prefix (firstn n l) l.
+    induction n; intros.
+    apply prefix_nil.
+    destruct l.
+    inversion H.
+    simpl.
+    apply prefix_next.
+    apply IHn.
+    apply le_S_n; assumption.
+  Qed.
   
   
   Inductive proper_prefix (A:Set) : list A -> list A -> Prop :=
@@ -239,8 +262,26 @@ Section list_aux.
   Inductive last (A: Set) : list A -> A -> Prop :=
   | last_base : forall a, last (a :: nil) a
   | last_cons : forall l a b, last l a -> last (b::l) a.
-  
-  
+
+
+  Lemma last_exists (A: Set) : forall l (c : A), exists c', last (c :: l) c'.
+  Proof.
+    intros.
+    induction l.
+    exists c.
+    apply last_base.
+    elim IHl; intros.
+    inversion H; subst.
+    exists a.
+    apply last_cons.
+    apply last_base.
+    exists x.
+    apply last_cons.
+    apply last_cons.
+    assumption.
+  Qed.
+
+
   Lemma single_last (A: Set) : forall l (a b: A), last l a -> last l b -> a = b.
     intros.
     induction l.
@@ -309,6 +350,11 @@ Section list_aux.
   Qed.
   
   
+  Lemma list_same_head (A: Set) :
+    forall l (a b: A), head (l ++ a :: nil) = head (l ++ a :: b :: nil).
+    induction l; intros; reflexivity.
+  Qed.
+
   Unset Implicit Arguments.
   
 End list_aux.
@@ -443,7 +489,7 @@ Section program_model.
   
   (* A label function is used to look up successor-labels.
      It used to be 'S' (the nat successor-funciotn) but that quickly became
-     insufficient when dealing with ghost inlining and "corresponding traces".
+     insufficient when inserting ghost-instructions.
   *)
   Definition label_function := label -> label.
   
@@ -503,7 +549,7 @@ Section program_model.
      reserved for the notion of "going wrong".) *)
   Definition initial_gv : ghost_valuation := fun l => intval 0. 
   Definition upd_gv (gv: ghost_valuation) (var: ghostid) (val: value) : ghost_valuation :=
-    (fun v => if beq_nat v var then val else gv var).
+    (fun v => if beq_nat v var then val else gv v).
   
   
   (* We go straight to extended configurations. *)
@@ -521,6 +567,10 @@ Section program_model.
     match c with (_, _, (normal _ _ _ s _)::_) => Some s | _ => None end.
   Definition lstore_of (c: conf) : option lstore :=
     match c with (_, _, (normal _ _ _ _ ls)::_) => Some ls | _ => None end.
+  Definition class_of (c: conf) : option classid :=
+    match c with (_, _, (normal c _ _ _ _)::_) => Some c | _ => None end.
+  Definition meth_of (c: conf) : option methid :=
+    match c with (_, _, (normal _ m _ _ _)::_) => Some m | _ => None end.
   Definition heap_of (c: conf) : heap := snd (fst c).
   Definition ars_of (c: conf) : (list act_record) := snd c.
   Definition ghost_valuation_of (c: conf) : ghost_valuation := fst (fst c).
@@ -531,7 +581,7 @@ Section program_model.
   Definition current_label (cnf: conf) : option label :=
     match cnf with (_, _, (normal _ _ pc _ _)::_) => Some pc | _ => None end.
   
-    Lemma current_to_instr_at :
+  Lemma current_to_instr_at :
     forall pg p c m pc s l1 l i, current_instr pg (p, normal c m pc s l1 :: l) = Some i ->
       instr_at pg c m pc = i.
   Proof.
@@ -539,6 +589,16 @@ Section program_model.
     inversion H.
     destruct p.
     inversion H1; subst.
+    reflexivity.
+  Qed.
+
+  Lemma instr_at_to_current :
+    forall pg p c m pc s l1 l i, instr_at pg c m pc = i -> current_instr pg (p, normal c m pc s l1 :: l) = Some i.
+  Proof.
+    intros.
+    unfold current_instr.
+    destruct p.
+    rewrite H.
     reflexivity.
   Qed.
 
@@ -652,17 +712,26 @@ Inductive eeval : expr -> conf -> value -> Prop :=
   
 
   (* Ghost instruction transitions *)
-  (* Stub *)
+  (* Just a stub as of now. *)
   Inductive g_eeval : expr -> ghost_valuation -> value -> Prop :=
-  | ge_val          : forall s v, g_eeval (valexp v) s v.
+  | ge_val : forall s v, g_eeval (valexp v) s v
+  | ge_gv : forall gv gid, g_eeval (ghost_var gid) gv (gv gid)
+  | ge_nsfield : forall e f gv, g_eeval (nsfield e f) gv undefval
+  | ge_sfield : forall gv cid f, g_eeval (sfield cid f) gv undefval
+  | ge_stackexp : forall gv n, g_eeval (stackexp n) gv undefval
+  | ge_local : forall gv l, g_eeval (local l) gv undefval
+  | ge_plus : forall gv e1 e2, g_eeval (plus e1 e2) gv undefval
+  | ge_guarded : forall gv e1 e2 e3, g_eeval (guarded e1 e2 e3) gv undefval.
+  
+  
   
   Inductive ghosttrans : program -> conf -> conf -> Prop :=
-    | tr_ghost_upd : forall p c m pc gvar e c1 c2 gv h ars pv,
-      instr_at p c m pc = ghost_instr (gvar, e) ->
-      c1 = (gv, h, ars) ->
-      g_eeval e (ghost_valuation_of c1) pv ->
-      c2 = (upd_gv gv gvar pv, h, ars) ->
-      ghosttrans p c1 c2.
+    | tr_ghost_upd :
+      forall h ars s ls
+        `(instr_at p c m pc = ghost_instr (gvar, e))
+        `(g_eeval e gv v),
+        ghosttrans p (gv, h, (normal c m pc s ls) :: ars)
+          (upd_gv gv gvar v, h, (normal c m (successor p c m pc) s ls) :: ars).
   
   
   (* Transitions (invoke-related) *)
@@ -686,7 +755,8 @@ Inductive eeval : expr -> conf -> value -> Prop :=
       c1 = (gv, h, ar1::ars) ->
       c2 = (gv, h, ar2::ars) ->
       artrans prog ar1 ar2 ->
-      trans prog c1 c2.
+      trans prog c1 c2
+  | tr_ghost : forall p c c', ghosttrans p c c' -> trans p c c'.
   
 
   Inductive trans_star : program -> execution -> Prop :=
@@ -770,6 +840,59 @@ Qed.
   Qed.
   
 
+Lemma exec_append : forall `(execution_of p (e ++ c :: nil)) `(trans p c c'),
+  execution_of p (e ++ c :: c' :: nil).
+intros.
+inversion execution_of0.
+apply exec_intros.
+
+pose proof (list_same_head e c c').
+rewrite H2 in H.
+assumption.
+
+destruct suff.
+intros.
+rewrite list_rearrange in H2.
+assert (pref ++ c0 :: c'0 :: nil = (pref ++ c0 :: nil) ++ c'0 :: nil).
+  rewrite list_rearrange.
+  reflexivity.
+rewrite H3 in H2.
+apply app_inj_tail in H2.
+elim H2; clear H2; intros.
+apply app_inj_tail in H2.
+elim H2; clear H2; intros.
+subst.
+assumption.
+
+intros.
+apply (H0 pref c0 c'0 (removelast (c1 :: suff))).
+
+assert (forall (A: Set) (l l': list A), l = l' -> removelast l = removelast l').
+  intros; subst; reflexivity.
+
+apply H3 in H2.
+assert (H_tmp : c :: c' :: nil <> nil).
+  intro; discriminate.
+rewrite (removelast_app e H_tmp) in H2; clear H_tmp.
+simpl in H2.
+assert (pref ++ c0 :: c'0 :: c1 :: suff = (pref ++ c0 :: c'0 :: nil) ++ c1 :: suff).
+  rewrite app_ass.
+  rewrite <- app_comm_cons.
+  reflexivity.
+rewrite H4 in H2.
+assert (H_nnil : c1 :: suff <> nil).
+  intro; discriminate.
+rewrite (removelast_app (pref ++ c0 :: c'0 :: nil) H_nnil) in H2.
+rewrite H2.
+rewrite app_ass.
+rewrite <- app_comm_cons.
+rewrite list_rearrange3.
+assert (forall (A: Set) (l : list A), nil ++ l = l).
+  reflexivity.
+rewrite H5.
+reflexivity.
+Qed.
+
 
   
   Lemma exec_impl_trans_star : forall p `(execution_of p e), trans_star p e.
@@ -844,11 +967,31 @@ Section semantics_assertions.
     discriminate.
   Qed.
 
-  Check g_eeval.
+  
   Lemma complete_geeval : forall e gv, exists v, g_eeval e gv v.
     intros.
-Admitted.
+    destruct e.
+    exists v; apply ge_val.
+    exists (gv g); apply ge_gv.
+    exists undefval; apply ge_nsfield.
+    exists undefval; apply ge_sfield.
+    exists undefval; apply ge_stackexp.
+    exists undefval; apply ge_local.
+    exists undefval; apply ge_plus.
+    exists undefval; apply ge_guarded.
+  Qed.
 
+
+Set Printing Coercions.
+Lemma deterministic_geeval : forall `(g_eeval e c v1) `(g_eeval e c v2), v1 = v2.
+intros.
+inversion g_eeval0; inversion g_eeval1; subst; try (inversion g_eeval1; discriminate); try reflexivity.
+inversion H2.
+reflexivity.
+inversion g_eeval0; inversion g_eeval1.
+subst.
+reflexivity.
+Qed.
 
 Lemma complete_eeval : forall e c, normal_conf c -> exists v, eeval e c v.
 
@@ -1988,6 +2131,8 @@ inversion H5; subst.
 apply wp_correct_normal_aload; assumption.
 
 (* astore n *)
+(* The other instructions can be treated similarly and are proved correct when the
+   remaining of the proof script is completed and the definitions more stable. *)
 
 (* This whole lemma could probably be solved with some proof search
    automation and/or ssreflect. Consult Karl. *)
@@ -2003,7 +2148,8 @@ Admitted.
         current_ast p c' = Some a ->
         (∥ wp p cid mid pc ∥ c'') ->
         (∥ a ∥ c').
-  (* Case split on instructions. *)
+(* The other instructions can be treated similarly and are proved correct when the
+   remaining of the proof script is completed and the definitions more stable. *)
   Admitted.
   
   
@@ -2132,7 +2278,8 @@ Admitted.
     intros.
     inversion H.
     inversion H2; inversion H0; inversion H1; subst; try apply suffix_next; try apply suffix_here.
-  Qed.
+    inversion H0; inversion H5; inversion H7; subst; apply suffix_next; apply suffix_here.
+Qed.
   
   
   Lemma all_ars_has_been_on_top :
@@ -2212,46 +2359,50 @@ Admitted.
   Qed.
   
   
-  Lemma no_empty_ar_stack_trans : forall c gv h, trans p c (gv, h, nil) -> False.
+  Lemma no_empty_ar_stack_trans : forall `(trans p (gv, h, ar :: ars) (gv', h', nil)), False.
     intros.
+    inversion trans0; subst.
+    inversion H0; subst.
     inversion H; subst.
-    inversion H1.
   Qed.
   
   
-  Lemma no_empty_ar_stack : forall gv h exec, execution_of p exec ->
+  Lemma no_empty_ar_stack : forall exec gv h, execution_of p exec ->
                                               In (gv, h, nil) exec -> False.
-    intros gv h.
-    apply (strong_exec_ind (fun exec => In (gv, h, nil) exec -> False)).
-    intros.
-    inversion H.
-    intros.
-    inversion H.
-    
-    assert (initial_conf c).
-      apply H1.
-      reflexivity.
-    inversion H4.
-    rewrite H5 in H0.
-    apply in_inv in H0.
-    elim H0; intros; inversion H6.
-    intros.
-    rewrite list_rearrange in H1.
-    apply in_but_not_last in H1.
-    generalize H; intros.
-    apply exec_impl_trans in H.
-    elim H1; intros.
-    rewrite <- H3 in H.
-    apply no_empty_ar_stack_trans in H.
-    contradiction.
-    apply (H0 (exec ++ c ::nil)).
-    apply (sub_execution2 exec c c').
-    assumption.
-    apply proper_prefix_app.
-    apply proper_prefix_next.
-    apply proper_prefix_nil.
-    assumption.
-  Qed.
+    destruct exec using rev_ind; intros.
+    inversion H0.
+rename x into c'.
+apply (IHexec gv h).
+apply (sub_execution exec (c' :: nil) H).
+destruct exec using rev_ind; [| clear IHexec0].
+inversion H0; subst.
+inversion H.
+pose proof (H1 (gv, h, nil)).
+assert (H_tmp : forall (A: Set) (a : A), head (nil ++ a :: nil) = Some a).
+  reflexivity.
+apply H4 in H_tmp.
+inversion H_tmp.
+contradict H1.
+rename x into c.
+apply in_app_or in H0.
+elim H0; clear H0; intros.
+rewrite <- list_rearrange in H.
+apply sub_execution2 in H.
+contradict (IHexec gv h H H0).
+inversion H0; [| contradiction]; subst.
+rewrite <- list_rearrange in H.
+destruct c.
+destruct p0.
+destruct l.
+apply sub_execution2 in H.
+apply (IHexec g h0) in H; [contradiction |].
+apply in_or_app.
+right.
+auto with datatypes.
+apply exec_impl_trans in H.
+contradict (no_empty_ar_stack_trans H).
+Qed.
+
   
   
   Lemma calling_only_invoke :
@@ -2270,6 +2421,8 @@ Admitted.
     subst.
     rewrite H5 in *.
     inversion H_atrans; subst; inversion H; contradict H9; apply list_neq_length; simpl; omega.
+    inversion H.
+    contradict H16; apply list_neq_length; simpl; omega.
   Qed.
   
   
@@ -2300,10 +2453,19 @@ Admitted.
     assert (H_curr_inst_ret: current_instr p cnf = Some ret).
     inversion H1; subst.
     inversion H3; subst.
+    
+    (* ar-trans *)
     inversion H5; subst; subst cnf; (try
       inversion H2; inversion H4; subst;
         inversion H4; contradict H8;
           apply list_neq_length; simpl; omega).
+    
+    (* ghost-trans *)
+    subst cnf.
+    inversion H2.
+    contradict H15.
+    apply list_neq_length; simpl; omega.
+    
     inversion H.
     pose proof (H2 c m).
     inversion H4.
@@ -2324,30 +2486,37 @@ Admitted.
     inversion H0; subst.
     inversion H2.
     inversion H4; subst; inversion H3; inversion H1.
+    subst.
+    inversion H1; subst.
   Qed.
   
   
-  Lemma no_double_exc_trans : forall c gv h o1 o2 ars,
-      trans p c (gv, h, exceptional o1 :: exceptional o2 :: ars) -> False.
+  Lemma no_double_exc_trans : forall `(trans p c (gv, h, exceptional o1 :: exceptional o2 :: ars)), exists gv', exists h', c = (gv', h', exceptional o1 :: exceptional o2 :: ars).
     intros.
-    inversion H; subst.
-    inversion H2; subst; inversion H1.
+    inversion trans0; subst.
+    inversion H1; subst; try (inversion H0; inversion H0; subst).
+inversion H; subst.
   Qed.
   
   
   Corollary no_double_exceptional : forall exec gv h o1 o2 ars,
       execution_of p (exec ++ (gv, h, exceptional o1 :: exceptional o2 :: ars) :: nil) -> False.
-    intros.
-    destruct exec using rev_ind.
+    destruct exec using rev_ind; intros.
     inversion H; subst.
     assert (initial_conf (gv, h, exceptional o1 :: exceptional o2 :: ars)).
       apply H0.
       reflexivity.
     inversion H2.
     rewrite <- list_rearrange in H.
+    generalize H; intros H_exec.
     apply exec_impl_trans in H.
-    apply (no_double_exc_trans x gv h o1 o2 ars) in H.
-    contradiction.
+    apply no_double_exc_trans in H.
+    elim H; clear H; intros.
+    elim H; clear H; intros.
+    subst.
+    apply sub_execution2 in H_exec.
+    apply IHexec in H_exec.
+    contradict H_exec.
   Qed.
   
   
@@ -2362,7 +2531,7 @@ Admitted.
     destruct ars.
     contradict H0.
     intro.
-    apply (no_empty_ar_stack gv h ((gv, h, nil)::nil)); auto with datatypes.
+    apply (no_empty_ar_stack ((gv, h, nil)::nil) gv h); auto with datatypes.
     assert (∥inv p ∥ (gv, h, a::ars)).
       inversion H.
       inversion H0.
@@ -2459,7 +2628,8 @@ Admitted.
         apply exec_impl_trans in H_exec.
         inversion H_exec; subst.
         inversion H3; subst; inversion H1.
-        
+        inversion H1; subst.
+
         (* a0 must be normal. *)
         destruct a0.
         
@@ -2541,11 +2711,13 @@ Admitted.
     destruct ars.
     inversion H0; subst.
     inversion H1.
+    inversion H1.
     destruct a.
     apply is_norm_conf.
     inversion H0; subst.
     inversion H1; subst.
     inversion H3; discriminate.
+    inversion H1.
   Qed.
   
   
@@ -2564,7 +2736,7 @@ Admitted.
     destruct c' as ((gv', h'), ars').
     destruct ars'.
     contradict H0; intro.
-    apply (no_empty_ar_stack gv' h' (exec ++ c :: (gv', h', nil) :: nil)); auto with datatypes.
+    apply (no_empty_ar_stack (exec ++ c :: (gv', h', nil) :: nil) gv' h'); auto with datatypes.
     destruct a.
     
     (* Last conf: normal *)
@@ -2616,6 +2788,7 @@ Admitted.
       inversion H1; subst.
       inversion H3; subst.
       inversion H5; subst; try inversion H2.
+      inversion H2.
       intros.
       apply (returning_conf_inv_exc gv' h' l ars').
       assumption.
@@ -2653,7 +2826,7 @@ Section contracts.
   
   (* The following definition is not distributive under ++ operations.
      That is, trace_of (exec1 ++ exec2) <> (trace_of exec1) ++ (trace_of exec2) *)
-  Fixpoint observed_event (p: program) (c: conf) : option event :=
+  Definition observed_event (p: program) (c: conf) : option event :=
     match c with
       | (gv, h, normal c m pc s ls :: ars) =>
         match (instr_at p c m pc) with
@@ -2799,8 +2972,8 @@ Section contracts.
   
   End ghost_inliner.
   
-  
-  Fixpoint ghost_update_of pg (c : conf) : option ghost_update :=
+  (*
+  Definition ghost_update_of pg (c : conf) : option ghost_update :=
     match c with
       | (_, _, normal c m pc s l :: _) =>
         match instr_at pg c m pc with
@@ -2809,7 +2982,13 @@ Section contracts.
         end
       | otherwise => None
     end.
-  
+  *)
+  Definition ghost_update_of pg (c : conf) : option ghost_update :=
+    match current_instr pg c with
+      | Some (ghost_instr gu) => Some gu
+      | _ => None
+    end.
+
   (* Returns ghost updates that *have been carried out* (to be compatible with ss_after). *)
   Fixpoint ghost_updates_of pg (eg : execution) : list ghost_update :=
     match eg with
@@ -2825,20 +3004,132 @@ Section contracts.
         end
     end.
   
-  (* Old definition
-  Fixpoint ghost_updates_of pg (eg : execution) : list ghost_update :=
+  Fixpoint seen_ghost_updates_of pg (eg : execution) : list ghost_update :=
     match eg with
       | nil => nil
-      | (_, _, nil) :: eg' => ghost_updates_of pg eg'
-      | (_, _, normal c m pc s l :: _) :: eg' =>
-        match instr_at pg c m pc with
-          | ghost_instr gu => gu :: ghost_updates_of pg eg'
-          | otherwise => ghost_updates_of pg eg'
+      | c :: eg' =>
+        match ghost_update_of pg c with
+          | Some gu => gu :: seen_ghost_updates_of pg eg'
+          | None => seen_ghost_updates_of pg eg'
         end
-      | (_, _, exceptional o :: _) :: eg' => ghost_updates_of pg eg'
     end.
-  *)
   
+  Lemma seen_ghost_updates_of_distr p :
+    forall e1 e2, seen_ghost_updates_of p (e1 ++ e2) = seen_ghost_updates_of p e1 ++ seen_ghost_updates_of p e2. 
+    induction e1; intros.
+    repeat rewrite <- app_nil_end.
+    reflexivity.
+    rewrite list_rearrange3.
+    simpl.
+    destruct (ghost_update_of p a).
+    rewrite list_rearrange3.
+    rewrite IHe1.
+    reflexivity.
+    apply IHe1.
+  Qed.
+  
+  Lemma gus_eq_seen_gus : forall p e c, 
+    ghost_updates_of p (e ++ c :: nil) = seen_ghost_updates_of p e.
+    induction e.
+    reflexivity.
+    intros.
+    simpl.
+    destruct (ghost_update_of p a).
+    rewrite IHe.
+    destruct e; [ | rewrite <- app_comm_cons ]; reflexivity.
+    rewrite IHe.
+    destruct e; [ | rewrite <- app_comm_cons ]; reflexivity.
+  Qed.
+  
+  Lemma gu_impl_normal : forall `(ghost_update_of p c = Some gu), normal_conf c.
+    intros.
+    unfold ghost_update_of in H.
+    assert (exists oi, current_instr p c = oi).
+      exists (current_instr p c); reflexivity.
+    elim H0; clear H0; intros.
+    rewrite H0 in H.
+    destruct x.
+    destruct i; try discriminate.
+    unfold current_instr in H0.
+    destruct c.
+    destruct l.
+    destruct p0.
+    discriminate.
+    destruct a.
+    destruct p0.
+    apply is_norm_conf.
+    destruct p0.
+    discriminate.
+    discriminate.
+  Qed.
+  
+Lemma ghost_update_impl_ghost_instr :
+  forall `(ghost_update_of p (gv, h, normal c m pc s ls :: ars0) = Some gu),
+    instr_at p c m pc = ghost_instr gu.
+Proof.
+  intros.
+  unfold ghost_update_of in H.
+  assert (exists oi, current_instr p (gv, h, normal c m pc s ls :: ars0) = oi).
+    exists (current_instr p (gv, h, normal c m pc s ls :: ars0)); reflexivity.
+  elim H0; clear H0; intros.
+  rewrite H0 in H.
+  destruct x.
+  destruct i; try discriminate.
+  apply current_to_instr_at in H0.
+  inversion H; subst.
+  assumption.
+  discriminate.
+Qed.
+
+
+  Lemma ex_seen_gus_impl_ex_gus : forall `(execution_of p e) `(seen_ghost_updates_of p e = gus),
+    exists e', execution_of p e' /\ ghost_updates_of p e' = gus.
+    destruct e using rev_ind; intros.
+    exists nil.
+    split; [apply exec_nil | ].
+    rewrite <- H; reflexivity.
+rename x into c.
+generalize execution_of0; intros.
+apply sub_execution in execution_of1.
+pose proof (IHe execution_of1).
+assert (exists ogu, ghost_update_of p c = ogu).
+  exists (ghost_update_of p c); reflexivity.
+elim H1; clear H1; intros.
+destruct x.
+(* last *is* a ghost update. e' needs to be an extended version of e. *)
+destruct g as (gid, gexpr).
+destruct c as (p0, ars).
+destruct p0 as (gv, h).
+pose proof (complete_geeval gexpr gv).
+elim H2; intros v H_geeval.
+
+pose proof (gu_impl_normal H1) as H_norm.
+inversion H_norm; subst.
+exists (e ++ (gv, h, normal c m pc s ls :: ars0) ::
+      (upd_gv gv gid v, h, (normal c m (successor p c m pc) s ls) :: ars0) :: nil).
+split.
+(**)
+apply exec_append; [assumption |].
+apply tr_ghost.
+apply tr_ghost_upd with (e := gexpr).
+apply ghost_update_impl_ghost_instr in H1.
+assumption.
+assumption.
+
+rewrite list_rearrange.
+rewrite gus_eq_seen_gus.
+reflexivity.
+
+(* last is not a gu *)
+rewrite seen_ghost_updates_of_distr in H.
+simpl in H.
+rewrite H1 in H.
+rewrite <- app_nil_end in H.
+apply (H0 gus).
+assumption.
+Qed.
+    
+
   Inductive ss_after : sec_state -> list ghost_update -> sec_state -> Prop :=
   | ssaft_done : forall ss, ss_after ss nil ss
   | ssaft_step : forall ss ss' ss'' gvar exp v ssus,
@@ -2847,22 +3138,48 @@ Section contracts.
         ss_after ss' ssus ss'' ->
         ss_after ss ((gvar, exp) :: ssus) ss''.
 
-Lemma prefix_split : forall (l l' l'' : list ghost_update), prefix (l ++ l') l'' -> prefix l l''.
-Admitted.
 
-Lemma prefix_split2 : forall (l l' : list conf), prefix l l' -> exists l'', l' = l ++ l''.
-Admitted.
+Lemma prefix_split : forall (l l' : list conf), prefix l l' -> exists l'', l' = l ++ l''.
+induction l; intros.
+exists l'; reflexivity.
+inversion H; subst.
+apply (IHl l'0) in H3.
+elim H3; clear H3; intros.
+subst.
+exists x.
+reflexivity.
+Qed.
 
 
-Lemma last_trans : forall `(execution_of p (e ++ c' :: nil)) `(last e c), trans p c c'.
+Lemma last_trans_app :  forall `(execution_of p (e ++ c :: c' :: nil)), trans p c c'.
+intros.
+inversion execution_of0.
+apply (H0 e c c' nil).
+reflexivity.
+Qed.
+
+
+Corollary last_trans : forall `(execution_of p (e ++ c' :: nil)) `(last e c), trans p c c'.
 intros.
 apply last_app_prefix in last0; try assumption.
 elim last0; intros.
 subst.
 rewrite <- list_rearrange in execution_of0.
-inversion execution_of0.
-apply (H0 x c c' nil).
-reflexivity.
+apply (last_trans_app execution_of0).
+Qed.
+
+
+Lemma non_ghost_instr_preservs_gv :
+  forall `(trans p (gv, h, ar :: ars) (gv', h', ars')),
+    (forall gu, current_instr p (gv, h, ar :: ars) <> Some (ghost_instr gu)) -> gv = gv'.
+intros.
+inversion trans0; subst.
+inversion H2; subst; try (inversion H0; inversion H1; subst; reflexivity).
+inversion H0; subst.
+apply instr_at_to_current with (p := (gv, h')) (s := s) (l1 := ls) (l := ars) in H3.
+pose proof (H (gvar, e)).
+rewrite H3 in H1.
+elim H1; reflexivity.
 Qed.
 
 
@@ -2886,200 +3203,548 @@ reflexivity.
 Qed.
 
 
-Lemma last_exists : forall l (c : conf), exists c', last (c :: l) c'.
-intros.
-induction l.
-exists c.
-apply last_base.
-elim IHl; intros.
-inversion H; subst.
-exists a.
-apply last_cons.
-apply last_base.
-exists x.
-apply last_cons.
-apply last_cons.
-assumption.
+Lemma ss_after_deterministic : forall ssus ss' ss'' ss,  ss_after ss ssus ss' -> ss_after ss ssus ss'' -> ss' = ss''.
+intros until ss''.
+induction ssus; intros ss ss_after0 ss_after1.
+inversion ss_after0; inversion ss_after1; repeat subst.
+reflexivity.
+inversion ss_after0; inversion ss_after1; subst.
+inversion H6; subst.
+pose proof (deterministic_geeval H1 H8); subst.
+apply (IHssus (upd_gv ss gvar v0) H5 H12).
 Qed.
 
 
-(* forall gv, ss_after initial_gv (ghost_updates_of p (e ++ (gv, h, ars))) gv. *)
-Lemma ss_after_equiv_last_gv : forall `(execution_of p (c :: e)) `(ss_after initial_gv (ghost_updates_of p (c :: e)) gv),
-  exists h, exists ars, last (c :: e) (gv, h, ars).
-Proof.
-intro.
-intro.
-intro.
-intro.
-destruct e using rev_ind; intros.
-(* base case *)
-admit.
 
-destruct x.
-destruct p0 as (gv', h').
-exists h'; exists l.
+Lemma ghost_update_extension :
+  forall x gv' h' ars' `(current_instr p (gv, h, ars) = Some (ghost_instr gu)),
+    (ghost_updates_of p (x ++ (gv,h,ars) :: nil)) ++ gu :: nil =
+        ghost_updates_of p (x ++ (gv,h,ars) :: (gv',h',ars') :: nil).
+intros.
+induction x.
 
-assert (gv = gv').
+assert (ghost_update_of p (gv, h, ars) = Some gu).
+  unfold ghost_update_of.
+  rewrite H.
+  reflexivity.
 
-generalize execution_of0; intro H'.
-rewrite app_comm_cons in H'.
-apply sub_execution in H'.
-pose proof (IHe H') as H_tmp.
-clear IHe; rename H_tmp into IHe.
+simpl.
+destruct ars.
+inversion H.
+destruct a.
+rewrite H0.
+reflexivity.
+inversion H.
 
-(* Dig out the last conf of e. *)
-generalize execution_of0; intros H_exec2.
-rewrite app_comm_cons in H_exec2.
-pose proof (last_exists e c).
-elim H; clear H; intros.
+repeat rewrite list_rearrange3.
 
-(* Assert that there is a transition from last conf of e, to last conf. *)
-pose proof (last_trans H_exec2 H).
+simpl.
+rewrite <- IHx.
 
-(* Dig out the gv (by ss_after) of the last conf of e... *)
-destruct x.
-destruct p0.
-pose proof (ss_after_total (ghost_updates_of p (c::e)) initial_gv).
-elim H1; clear H1; intros.
+pose proof (app_cons_has_head (gv, h, ars) x nil) as H_eq1.
+elim H_eq1; clear H_eq1; intros c1 H_eq1.
+elim H_eq1; clear H_eq1; intros x1 H_eq1.
 
-(* ...and apply IHe to it. *)
-elim (IHe x); try assumption; clear IHe; intros.
-elim H2; clear H2; intros.
-pose proof (single_last H2 H).
-inversion H3; clear H3 H; subst.
+pose proof (app_cons_has_head (gv, h, ars) x ((gv', h', ars') :: nil)) as H_eq2.
+elim H_eq2; clear H_eq2; intros c2 H_eq2.
+elim H_eq2; clear H_eq2; intros x2 H_eq2.
 
-(* case 1: transitionen är INTE en ghost-update -> g = gv' -> *)
+rewrite H_eq1.
+rewrite H_eq2.
 
-admit.
-
-
-rewrite app_comm_cons.
-apply last_app.
-rewrite H.
-apply last_base.
+destruct (ghost_update_of p a).
+reflexivity.
+reflexivity.
 Qed.
 
 
-(*
-Lemma tmp2 : forall p c e pref, 
-  execution_of p (c :: e) ->
-  forall ss,
-    ss_after initial_gv pref ss ->
-    prefix pref (ghost_updates_of p (c :: e)) ->
-    exists e_pref, exists h, exists ars, prefix e_pref (c :: e) /\ last e_pref (ss, h, ars).
-Proof.
+Lemma ghost_update_noextension :
+  forall p x gv h ars gv' h' ars',
+    (forall gu, current_instr p (gv, h, ars) <> Some (ghost_instr gu)) ->
+    ghost_updates_of p (x ++ (gv,h,ars) :: nil) =
+        ghost_updates_of p (x ++ (gv,h,ars) :: (gv',h',ars') :: nil).
 intros.
-pose proof (tmp_test p pref (c :: e)).
-elim H2; clear H2; try assumption.
-intros e_pref H_tmp.
-elim H_tmp; clear H_tmp; intros.
+induction x.
 
-rewrite <- H3 in H0.
-apply ss_after_equiv_last_gv with (gv := ss) in H.
-exists e_pref.
-elim H; intros h H_tmp.
-elim H_tmp; clear H_tmp; intros ars H'.
-exists h; exists ars.
-split.
+assert (ghost_update_of p (gv, h, ars) = None).
+  unfold ghost_update_of.
+  destruct ars; try reflexivity.
+  destruct a; intros; try reflexivity.
+  
+  assert (H_tmp : exists oi, instr_at p c m l = oi).
+    exists (instr_at p c m l); reflexivity.
+  elim H_tmp; clear H_tmp; intros i H_tmp.
+  apply instr_at_to_current with (p := (gv, h)) (s := s) (l1 := l0) (l := ars) in H_tmp.
+  rewrite H_tmp in * |- *.
+  destruct i; try reflexivity.
+  pose proof (H g).
+  
+  contradict H0.
+  simpl.
+  reflexivity.
+
+simpl.
+destruct ars.
+reflexivity.
+destruct a; try reflexivity.
+assert (exists oi, instr_at p c m l = oi).
+  exists (instr_at p c m l); reflexivity.
+elim H1; clear H1; intros i H1.
+rewrite H0 in *.
+reflexivity.
+
+repeat rewrite list_rearrange3.
+
+simpl.
+rewrite <- IHx.
+
+pose proof (app_cons_has_head (gv, h, ars) x nil) as H_eq1.
+elim H_eq1; clear H_eq1; intros c1 H_eq1.
+elim H_eq1; clear H_eq1; intros x1 H_eq1.
+
+pose proof (app_cons_has_head (gv, h, ars) x ((gv', h', ars') :: nil)) as H_eq2.
+elim H_eq2; clear H_eq2; intros c2 H_eq2.
+elim H_eq2; clear H_eq2; intros x2 H_eq2.
+
+rewrite H_eq1.
+rewrite H_eq2.
+reflexivity.
+Qed.
+
+
+(* EXISTS_EXEC_WITH_EQ_GUS Begin *)
+Section conf_classes.
+  
+  Variable (contr: contract) (p: program) (c: conf).
+  
+  Definition before_gu_conf cid mid : Prop :=
+    current_instr p c = Some (ghost_instr (contr (before, cid, mid))).
+  
+  Definition before_ssu_conf cid mid : Prop :=
+    current_instr p c = Some (invoke cid mid).
+  
+  Definition after_gu_conf cid mid : Prop :=
+    current_instr p c = Some (ghost_instr (contr (after, cid, mid))).
+
+  Definition after_ssu_conf cid mid : Prop :=
+    class_of c = Some cid /\ meth_of c = Some mid /\ current_instr p c = Some ret.
+
+  Definition non_sra_conf : Prop :=
+    forall cid mid,
+      ~ before_gu_conf  cid mid /\ ~ after_gu_conf  cid mid /\
+      ~ before_ssu_conf cid mid /\ ~ after_ssu_conf cid mid.
+
+End conf_classes.
+
+
+Lemma exec_tail_cases :
+  forall contr
+    `(ghost_inlined contr p pg)
+    `(execution_of pg (e ++ c :: nil))
+    `(ss_updates_of contr (event_trace_of pg (e ++ c :: nil)) ssus),
+    let gus := seen_ghost_updates_of pg (e ++ c :: nil) in 
+      (exists cid, exists mid, before_gu_conf contr pg c cid mid /\ ssus ++ (contr (before, cid, mid)) :: nil = gus) \/
+      (exists cid, exists mid, before_ssu_conf pg c cid mid /\ ssus = gus) \/
+      (exists cid, exists mid, after_ssu_conf pg c cid mid /\ ssus = gus ++ (contr (after, cid, mid)) :: nil) \/
+      (exists cid, exists mid, after_gu_conf contr pg c cid mid /\ ssus = gus) \/
+      (non_sra_conf contr pg c /\ ssus = gus).
+(* Work in progress *)
+(* See temp2.v in repository for a sketch proof. *)
+(* It's a straigt forward induction over the length of the execution and
+   a case split on the type of the last configuration *)
 Admitted.
-*)
-
-Lemma tmp1 : forall `(ss_updates_of contr (event_trace_of pg eg) ssus)
-                `(is_sec_state_trace ssus sst) ss,
-                In ss sst <-> exists ssus_pref, prefix ssus_pref ssus /\ ss_after initial_gv ssus_pref ss.
-intros.
-Admitted.
 
 
-  Lemma ssus_eq_gus_impl_ss_subset_gvs :
-    forall p
-      contr
+(* Work in progress. *)
+Lemma exists_exec_with_eq_seen_gus :
+    forall contr
       `(ghost_inlined contr p pg)
-      `(max_execution_of pg eg)
-      `(ss_updates_of contr (event_trace_of pg eg) ssus)
-      `(is_sec_state_trace ssus sst),
-      
-      (* denna är jobbig (blir en dålig ih) *)
-      (forall ss, In ss sst -> exists h, exists ars, In (ss, h, ars) eg).
-      
-      (* starkare intermediärt lemma, denna kanske funkar bättre *)
-      (* alla nåbara ss (baserat på prefix av ssus) är nåbara gv (efterssom prefix av ssus också
-      är prefix av gvs *)
- 
+      `(execution_of pg eg)
+      `(ss_updates_of contr (event_trace_of pg eg) ssus),
+      exists e'g,
+        execution_of pg e'g /\ seen_ghost_updates_of pg e'g = ssus.
 Proof.
-(*
-intros.
-pose proof (max_exec_impl_gus_eq_ssus p contr ghost_inlined0
-  max_execution_of0 ss_updates_of0 is_sec_state_trace0).
-
-(* 1. exists ssus_pref, prefix ssus_pref ssus /\ ss_after ssus_pref = ss *)
-pose proof (tmp1 ss_updates_of0 is_sec_state_trace0 ss).
-apply H1 in H.
-elim H; intros ssus_pref; intros.
-elim H2; clear H2; intros.
-
-(* 2. exists gus_pref, prefix gus_pref (ghost_updates_of pg eg) *)
-generalize H2; intros H_gus_pref; rewrite H0 in H_gus_pref.
-rename ssus_pref into gus_pref.
-
-(* 3. exists e_pref, prefix e_pref eg /\
-                ghost_updates_of pg e_pref = gus_pref /\
-                last e_pref (ss, h, ars) *)
-destruct eg.
-admit.
-unfold max_execution_of in max_execution_of0.
-elim max_execution_of0; clear max_execution_of0; intros.
-
-pose proof (tmp2 pg c eg gus_pref H4 ss H3 H_gus_pref).
-elim H6; clear H6; intros.
-elim H6; clear H6; intros.
-elim H6; clear H6; intros.
-elim H6; clear H6; intros.
-exists x0; exists x1.
-Lemma last_in : forall l (x: conf), last l x -> In x l.
   intros.
-  induction l.
-  inversion H.
-  inversion H; subst.
+  destruct eg using rev_ind; [| clear IHeg].
+  exists nil.
+  split; [apply exec_nil |].
+  inversion ss_updates_of0.
+  reflexivity.
+  pose proof (exec_tail_cases contr ghost_inlined0 execution_of0 ss_updates_of0).
+  rename eg into e0, x into c.
+  elim H; clear H; intros H_tmp.
+  
+  (* case 1 *)
+  elim H_tmp; clear H_tmp; intros cid H_tmp.
+  elim H_tmp; clear H_tmp; intros mid H_tmp.
+  elim H_tmp; clear H_tmp; intros.
+  exists e0.
+  split; [ apply sub_execution with (suff := c :: nil); assumption |].
+  unfold before_gu_conf in H.
+  rewrite seen_ghost_updates_of_distr in H0.
+  simpl in H0.
+  unfold ghost_update_of in H0.
+  rewrite H in H0.
+  apply app_inj_tail in H0.
+  elim H0; intros.
+  rewrite H1; reflexivity.
+  
+  (* case 2 *)
+  elim H_tmp; clear H_tmp; intros H_tmp.
+  elim H_tmp; clear H_tmp; intros cid H_tmp.
+  elim H_tmp; clear H_tmp; intros mid H_tmp.
+  elim H_tmp; clear H_tmp; intros.
+  exists (e0 ++ c :: nil).
+  split; [assumption |].
+  rewrite H0; reflexivity.
+  
+  
+  (* case 3 *)
+  elim H_tmp; clear H_tmp; intros H_tmp.
+  elim H_tmp; clear H_tmp; intros cid H_tmp.
+  elim H_tmp; clear H_tmp; intros mid H_tmp.
+  elim H_tmp; clear H_tmp; intros.
+  destruct c.
+  destruct p0 as (gv, h).
+  destruct l.
+  apply no_empty_ar_stack with (gv := gv) (h := h) in execution_of0.
+  contradict execution_of0.
   auto with datatypes.
-  apply in_cons.
-  apply IHl.
+  
+  exists (e0 ++ (gv, h, a :: l) :: (gv, h, l) :: nil).
+  split.
+  apply exec_append.
   assumption.
-Qed.  
+  
+(**)
+(* tr_ret *)
+(**)
+  admit.
+  rewrite list_rearrange.
+  rewrite seen_ghost_updates_of_distr.
+  simpl.
+  (* a ghost-after-update conf follows after a ret conf. *)
+  assert (current_instr pg (gv, h, l) = Some (ghost_instr (contr (after, cid, mid)))).
+  admit.
+  unfold ghost_update_of.
+  rewrite H1.
+  rewrite H0.
+  reflexivity.
+  
+  (* Case 4 *)
+  elim H_tmp; clear H_tmp; intros H_tmp.
+  elim H_tmp; clear H_tmp; intros cid H_tmp.
+  elim H_tmp; clear H_tmp; intros mid H_tmp.
+  elim H_tmp; clear H_tmp; intros.
+  exists (e0 ++ c :: nil).
+  split; subst; [assumption | reflexivity].
+  
+  (* Case 5 *)
+  elim H_tmp; clear H_tmp; intros.
+  exists (e0 ++ c :: nil).
+  split; subst; [assumption | reflexivity].
+Qed.
 
-apply last_in in H7.
 
-Lemma in_prefix_impl_in_list : forall l l' (x: conf), prefix l' l -> In x l' -> In x l.
-  Admitted.
-apply in_prefix_impl_in_list with (l' := x); assumption.
-Qed.*)Admitted.
-
-
-Lemma exists_exec_with_eq_gus :
+Corollary exists_exec_with_eq_gus :
     forall contr
       `(ghost_inlined contr p pg)
       `(execution_of pg eg)
       `(ss_updates_of contr (event_trace_of pg eg) ssus),
       exists e'g,
         execution_of pg e'g /\ ghost_updates_of pg e'g = ssus.
-Admitted.
+Proof.
+intros.
+pose proof (exists_exec_with_eq_seen_gus contr ghost_inlined0 execution_of0 ss_updates_of0).
+elim H; clear H; intros.
+elim H; clear H; intros.
+apply (ex_seen_gus_impl_ex_gus H H0).
+Qed.
 
+
+(* EXISTS_EXEC_WITH_EQ_GUS End *)
+
+
+Lemma len_sst_eq_S_len_ssus : forall `(sst_tail ssus sst), length sst = S (length ssus).
+Proof.
+induction ssus; intros.
+inversion sst_tail0.
+inversion H0.
+reflexivity.
+inversion sst_tail0.
+inversion H0; subst.
+assert (H_tmp : forall (a: ghost_valuation) l n, length l = n -> length (a :: l) = S n). simpl; auto.
+apply (H_tmp ss (upd_gv ss gvar v :: sst0) (length ((gvar, exp) :: ssus))); clear H_tmp.
+assert (H_tmp : length ((gvar, exp) :: ssus) = S (length ssus)). auto.
+rewrite H_tmp; clear H_tmp.
+apply IHssus.
+assumption.
+Qed.
+
+
+Definition dummy_ss : sec_state := initial_gv.
+Definition dummy_su : ghost_update := (O, valexp (ghost_errval)).
+
+
+Lemma sst_follows_ssus :
+  forall `(n < length (ss :: sst))
+    `(sst_tail ssus (ss :: sst)),
+    ss_after ss (firstn n ssus) (nth n (ss :: sst) dummy_ss).
+Proof.
+  induction n; intros.
+  simpl.
+  apply ssaft_done.
+  destruct ssus.
+  simpl.
+  simpl in H.
+  apply lt_S_n in H.
+  inversion sst_tail0; subst.
+  inversion H.
+  simpl.
+  destruct g.
+  pose proof (complete_geeval e ss).
+  elim H0; clear H0; intros v H_geeval.
+  pose (upd_gv ss g v) as ss'.
+  apply ssaft_step with (ss' := ss') (v := v).
+  assumption.
+  reflexivity.
+  destruct sst.
+  inversion H.
+  inversion H1.
+  assert (s = ss').
+    inversion sst_tail0; subst.
+    pose proof (deterministic_geeval H_geeval H4).
+    rewrite <- H0 in *; clear H0.
+    reflexivity.
+  subst.
+  apply IHn.
+  simpl in H.
+  apply lt_S_n in H.
+  assumption.
+  inversion sst_tail0.
+  assumption.
+Qed.
 
 
 Lemma exists_ssus_prefix :
-  forall `(execution_of p e)
-    `(ss_updates_of contr (event_trace_of p e) ssus)
-    `(is_sec_state_trace ssus sst),
+  forall `(is_sec_state_trace ssus sst),
     (forall ss, In ss sst ->
       exists ssus_pref, prefix ssus_pref ssus /\ ss_after initial_gv ssus_pref ss).
-Admitted.
+intros.
+apply In_split in H.
+elim H; clear H; intros pref H.
+elim H; clear H; intros suff H.
+subst.
+
+exists (firstn (length pref) ssus).
+split.
+assert (length pref <= length ssus).
+  inversion is_sec_state_trace0.
+  apply len_sst_eq_S_len_ssus in H0.
+  rewrite app_length in H0.
+  simpl in H0.
+  rewrite <- plus_Snm_nSm in H0.
+  inversion H0.
+  assert (H_tmp : forall n m, n <= n + m). intros; omega.
+  apply H_tmp.
+
+apply prefix_firstn; assumption.
+
+assert (forall l l' (x : sec_state), nth (length l) (l ++ x :: l') dummy_ss = x).
+  intros.
+  induction l.
+  reflexivity.
+  assumption.
+
+inversion is_sec_state_trace0.
+assert (length pref < length (pref ++ ss :: suff)).
+  rewrite app_length.
+  assert (H_tmp : forall n m, n < n + (S m)). intros; omega.
+  apply H_tmp.
+
+destruct pref.
+
+pose proof (sst_follows_ssus H2 H1).
+simpl.
+inversion is_sec_state_trace0.
+inversion H4; subst.
+apply ssaft_done.
+
+rewrite list_rearrange3 in *.
+pose proof (sst_follows_ssus H2 H1).
+rewrite <- list_rearrange3 in H3.
+rewrite (H (s :: pref) suff ss) in H3.
+inversion is_sec_state_trace0.
+inversion H4; subst.
+assumption.
+Qed.
 
 
-
-Lemma gus_pref_impl_exec_pref : forall `(prefix gus_pref (ghost_updates_of p e)),
+Lemma gus_pref_impl_exec_pref : forall p e gus_pref `(prefix gus_pref (ghost_updates_of p e)),
     exists e_pref, prefix e_pref e /\ ghost_updates_of p e_pref = gus_pref.
-(* See Karls proof in repos.*)
-Admitted.
+intros p e.
+elim e; intros.
+exists nil.
+split.
+apply prefix_nil.
+inversion prefix0.
+reflexivity.
+
+destruct gus_pref.
+exists nil; split.
+apply prefix_nil.
+reflexivity.
+
+case_eq (ghost_update_of p a).
+intros.
+inversion prefix0.
+destruct l.
+inversion H4.
+pose proof (H gus_pref).
+rewrite H0 in H4.
+assert (H_listeq : l' = ghost_updates_of p (c :: l)).
+  inversion H4; subst; reflexivity.
+rewrite H_listeq in H2.
+apply H5 in H2.
+elim H2; intros.
+elim H6; intros.
+
+(* clear case in which x is nil *)
+destruct x.
+subst.
+exists (a :: c :: nil).
+split.
+repeat apply prefix_next.
+apply prefix_nil.
+simpl.
+rewrite H0.
+inversion H4; subst; reflexivity.
+
+exists (a :: c0 :: x).
+split.
+apply prefix_next.
+assumption.
+
+rewrite <- H8.
+
+assert (H_tmp : g = g0).
+  inversion H4; subst; reflexivity.
+subst.
+
+unfold ghost_updates_of.
+rewrite H0.
+reflexivity.
+
+pose proof (H (g :: gus_pref)).
+intros.
+
+destruct l.
+simpl in prefix0.
+inversion prefix0.
+assert (ghost_updates_of p (a :: c :: l) = ghost_updates_of p (c :: l)).
+  unfold ghost_updates_of at 1.
+rewrite H1.
+reflexivity.
+rewrite H2 in prefix0.
+
+apply H0 in prefix0.
+elim prefix0; intros.
+elim H3; intros.
+exists (a :: x).
+split.
+apply prefix_next.
+assumption.
+
+destruct x.
+inversion H5.
+assert (ghost_updates_of p (a :: c0 :: x) = ghost_updates_of p (c0 :: x)).
+  unfold ghost_updates_of at 1.
+  rewrite H1.
+  reflexivity.
+rewrite H6.
+assumption.
+Qed.
+
+Lemma to_be_or_not_to_be_ghost :
+  forall p c, (exists gu, current_instr p c = Some (ghost_instr gu)) \/
+    (forall gu, current_instr p c <> Some (ghost_instr gu)).
+intros.
+destruct c.
+destruct l.
+right.
+intros.
+compute.
+intros.
+destruct p0.
+discriminate.
+destruct a.
+assert (exists oi, current_instr p (p0, normal c m l0 s l1 :: l) = oi).
+  exists (current_instr p (p0, normal c m l0 s l1 :: l)); reflexivity.
+elim H; clear H; intros.
+destruct x.
+
+destruct i; try (right; intros; rewrite H; discriminate).
+left; exists g; rewrite H; reflexivity.
+
+right.
+intros.
+rewrite H.
+discriminate.
+right.
+intros.
+simpl.
+destruct p0.
+discriminate.
+Qed.
+
+
+Lemma ss_after_update :
+  forall ssus ss gv gid gexpr ss' v,
+    ss_after ss ssus gv ->
+    ss_after ss (ssus ++ (gid, gexpr) :: nil) ss' ->
+    g_eeval gexpr gv v ->
+    ss' = upd_gv gv gid v.
+Proof.
+induction ssus; intros.
+inversion H; inversion H0; subst.
+pose proof (deterministic_geeval H1 H8); subst.
+inversion H11; subst.
+reflexivity.
+
+rewrite list_rearrange3 in H0.
+destruct a.
+pose proof (complete_geeval e ss) as H_geeval.
+elim H_geeval; clear H_geeval; intros v2 H_geeval.
+apply IHssus with (ss := upd_gv ss g v2) (gexpr := gexpr).
+inversion H; subst.
+pose proof (deterministic_geeval H_geeval H6); subst.
+assumption.
+inversion H0; subst.
+pose proof (deterministic_geeval H_geeval H6); subst.
+assumption.
+assumption.
+Qed.
+
+
+
+Lemma trans_ghost_update :
+  forall `(g_eeval gexpr gv v)
+    `(trans p (gv, h, ars) (gv', h', ars'))
+    `(current_instr p (gv, h, ars) = Some (ghost_instr (gid, gexpr))),
+    gv' = upd_gv gv gid v.
+
+intros.
+inversion trans0; inversion H2; subst; try (
+  inversion H1; inversion H0; subst; inversion H; subst; rewrite H6 in *; discriminate).
+inversion H0; subst.
+
+apply current_to_instr_at in H.
+rewrite H in H3.
+inversion H3.
+subst.
+rewrite (deterministic_geeval g_eeval0 g_eeval1).
+reflexivity.
+Qed.
 
 
 (* ss_AFTER means after the su of the last conf. gv_last is the gv AT the last conf.
@@ -3088,32 +3753,120 @@ Admitted.
 
    EDIT: This has now been fixed with a more appropriate definition of ghost_updates_of. *)
 Lemma ss_after_equals_gv_last :
-  forall gv h ars
+  forall `(last e (gv, h, ars))
     `(execution_of p e)
-    `(ss_after initial_gv (ghost_updates_of p e) ss)
-    `(last e (gv, h, ars)),
+     `(ss_after initial_gv (ghost_updates_of p e) ss),
     ss = gv.
-
 Proof.
 
-destruct e using rev_ind.
-intros.
-inversion last0.
+  destruct e using rev_ind.
+  intros.
+  inversion last0.
+  
+  intros.
+  apply last_app_cons in last0; subst.
+  
+  (* In order to make use of IHe, we need [last e (gv', h', ars')]. That is, we need to know that
+     e <> nil. *)
+  destruct (nil_or_app e).
+  (* Case e = nil *)
+  subst.
+  simpl in *.
+  inversion ss_after0; subst.
+  inversion execution_of0; subst.
+  assert (initial_conf (gv, h, ars)).
+    apply H; auto.
+  inversion H1; subst.
+  reflexivity.
+  
+  (* Case e = x ++ c :: nil *)
+  rename ss into ss', gv into gv', h into h', ars into ars'.
+  elim H; clear H; intros.
+  elim H; clear H; intros.
+  subst.
+  destruct x0 as (p0, ars).
+  destruct p0 as (gv, h).
+  
+  pose proof (sub_execution p (x ++ (gv, h, ars) :: nil) ((gv', h', ars') :: nil) execution_of0).
+  pose proof (IHe gv h ars (app_last x (gv, h, ars)) p H).
+  
+  
+  pose proof (ss_after_total (ghost_updates_of p (x ++ (gv, h, ars) :: nil)) initial_gv) as H_tmp.
+  elim H_tmp; clear H_tmp; intros ss2 H_ssaft.
+  pose proof (H0 ss2 H_ssaft).
+  subst.
 
-intros.
-apply last_app_cons in last0; subst.
-assert (H_tmp : execution_of p e).
-  apply sub_execution with (suff := (gv, h, ars) :: nil); assumption.
+  (* Case-split on the type of instruction in (gv, h, ars). *)
+  pose proof (to_be_or_not_to_be_ghost p (gv, h, ars)).
+  elim H1; clear H1; intros.
+  
+  (* if (gv, h, ars) *does* point at a ghost instruction (with update "gu"), then
+     (ghost_updates_of p (x ++ (gv,h,ars)                  :: nil)) ++ gu  equals
+      ghost_updates_of p (x ++ (gv,h,ars) :: (gv',h',ars') :: nil)
+      
+      Since H_ssaft says
+      ss_after initial_gv (ghost_updates_of p (x ++ (gv, h, ars) :: nil)) gv
+      and ss_after0 says
+      ss_after initial_gv
+      (ghost_updates_of p ((x ++ (gv, h, ars) :: nil) ++ (gv', h', ars') :: nil)) ss'
+      we know that the last update (gu) updates gv to ss'.
+      And since execution_of0 says that (gv,h,ars)->(gv',h',ars') we have that gu updates gv to gv'
+      Since ghost-updates are deterministic, ss' = gv'.
+  *)
+  elim H1; clear H1; intros gu H1.
+  pose proof (ghost_update_extension x gv' h' ars' H1) as H_eq.
+  
+  destruct gu as (gid, gexpr).
+  pose proof (complete_geeval gexpr gv).
+  elim H2; clear H2; intros v H2.
 
+  rewrite <- list_rearrange in ss_after0.
+  rewrite <- H_eq in ss_after0.
+  pose proof (ss_after_update _ _ _ _ _ _ _ H_ssaft ss_after0 H2) as H_gv_upd.
+  
+  (* From execution_of0 *)
+  assert (H_trans : trans p (gv, h, ars) (gv', h', ars')).
+    inversion execution_of0.
+    apply H4 with (pref := x) (suff := nil).
+    rewrite <- list_rearrange; reflexivity.
+  pose proof (trans_ghost_update H2 H_trans H1).
+  
+  subst.
+  reflexivity.
 
-inversion last0; subst.
-intros.
-assert (initial_conf (gv, h, ars)).
-  inversion execution_of0.
-  apply H.
-  auto.
-(**)
-Admitted.
+  (* if (gv, h, ars) *does not* point at a ghost instruction, then
+     ghost_updates_of p (x ++ (gv,h,ars)                  :: nil)  =
+     ghost_updates_of p (x ++ (gv,h,ars) :: (gv',h',ars') :: nil)
+     
+     Rewriting ss_after0 using the above equality yields 
+     ss_after initial_gv (ghost_updates_of p (x ++ (gv, h, ars) :: nil)) ss'
+     and H_ssaft says
+     ss_after initial_gv (ghost_updates_of p (x ++ (gv, h, ars) :: nil)) gv
+     Since ss_after is deterministic, we have ss' = gv.
+     execution_of0 says that (gv,h,ars) -> (gv',h',ar's) and since (gv,h,ars) does not point
+     at a ghost-update, gv = gv'.
+     Thus, ss' = gv'.
+  *)
+  
+  assert (H_eq : ghost_updates_of p (x ++ (gv,h,ars) :: nil) =
+                 ghost_updates_of p (x ++ (gv,h,ars) :: (gv',h',ars') :: nil)).
+
+  rewrite <- list_rearrange in execution_of0.
+  apply (ghost_update_noextension _ _ _ _ _ _ _ _ H1).
+  
+  rewrite <- list_rearrange in ss_after0.
+  rewrite <- H_eq in ss_after0.
+  pose proof (ss_after_deterministic _ _ _ _ ss_after0 H_ssaft).
+  
+  rewrite <- list_rearrange in execution_of0.
+  destruct ars.
+  apply no_empty_ar_stack with (gv:= gv) (h := h) in H.
+  contradict H.
+  auto with datatypes.
+  pose proof (non_ghost_instr_preservs_gv (last_trans_app execution_of0) H1).
+  subst.
+  reflexivity.
+Qed.
 
 
   Lemma non_empty_exec_has_initial_gv :
@@ -3145,7 +3898,7 @@ Proof.
 intros.
 
 (* 2. Let pref denote the prefix of ssus(E) which takes the initial sec-state to ss. *)
-pose proof (exists_ssus_prefix execution_of0 ss_updates_of0 is_sec_state_trace0 ss H0) as H_tmp.
+pose proof (exists_ssus_prefix is_sec_state_trace0 ss H0) as H_tmp.
 elim H_tmp; clear H_tmp; intros pref H_tmp.
 elim H_tmp; clear H_tmp; intros H_pref H_ssaft.
 
@@ -3168,7 +3921,7 @@ destruct (nil_or_app e_pref); subst.
   apply list_neq_length; rewrite app_length; simpl; omega.
 
   (* case e_pref = l' ++ a *)
-  apply prefix_split2 in H_pref.
+  apply prefix_split in H_pref.
   elim H_pref; intros e_suff H.
   assert (H_exec_pref : execution_of p e_pref).
     rewrite H in execution_of1.
@@ -3177,7 +3930,7 @@ destruct (nil_or_app e_pref); subst.
   elim H1; clear H1; intros.
   subst.
   destruct x as (gv_h, ars); destruct gv_h as (gv, h).
-  pose proof (ss_after_equals_gv_last gv h ars H_exec_pref H_ssaft (app_last l' (gv, h, ars))).
+  pose proof (ss_after_equals_gv_last (app_last l' (gv, h, ars)) H_exec_pref H_ssaft).
   subst.
   rewrite H.
   exists h; exists ars.
@@ -3233,6 +3986,7 @@ Qed.
     
     intros.
     left.
+    
     apply (ssus_eq_gus_impl_sst_subset_gvs contr execution_of0 H
       ss_updates_of0 is_sec_state_trace0 H0 ss H2).
   Qed.
@@ -3269,6 +4023,7 @@ Qed.
     (* case ss = initial_gv *)
     subst.
     unfold violating_sec_state.
+    unfold initial_gv.
     intro.
     discriminate H3.
   Qed.
@@ -3319,16 +4074,15 @@ Qed.
     Notation "c1 'sim' c2 " := (sim_p c1 c2) (at level 90).
     
     
+    (* Work in progress. 2010-04-16. *)
+    (* See notes for a proof on paper. *)
     Lemma pg_simulates_p_base :
       forall `(initial_conf c0),
         exists eg,
           execution_of pg eg /\
           event_trace_of p (c0 :: nil) = event_trace_of pg eg /\
           (exists c'g, last eg c'g /\ (c0 sim c'g)).
-    Proof.
     Admitted.
-    
-    
     Lemma pg_simulates_p_step :
       forall c cg c',
         c sim cg ->
@@ -3336,7 +4090,6 @@ Qed.
         (exists eg, exists c'g, trans_star pg (cg :: eg ++ c'g :: nil) /\
           (c' sim c'g) /\
           event_trace_of p (c' :: nil) = event_trace_of pg (eg ++ c'g :: nil)).
-    Proof.
     Admitted.
   
   End ghost_simulation.
@@ -3532,7 +4285,37 @@ Qed.
   
   Definition stronger_ast a a' := forall c, ∥ a ∥ c -> ∥ a' ∥ c.
   
+
+Lemma ghostid_neq_false : forall g1 g2 : ghostid, g1 <> g2 -> beq_nat g1 g2 = false.
+  induction g1; intros.
+  destruct g2.
+  elim H; reflexivity.
+  reflexivity.
+  destruct g2.
+  reflexivity.
+  simpl.
+  assert (g1 <> g2).
+    intro; elim H; intros; rewrite H0; reflexivity.
+  apply (IHg1 _ H0).
+Qed.
   
+
+Lemma ghostid_eq_dec : forall g1 g2: ghostid, g1 = g2 \/ g1 <> g2.
+  induction g1; intros.
+  destruct g2.
+  left; reflexivity.
+  right; auto.
+  destruct g2.
+  right; auto.
+  elim (IHg1 g2); intros.
+  left; rewrite H; reflexivity.
+  right.
+  intro.
+  contradict H.
+  inversion H0.
+  reflexivity.
+Qed.
+
 
 (* Lemma: only way to go from non-violating conf to violating conf is to execute a ghost instr with rhs evaluating to \bot *)
 Lemma non_vio_to_vio_impl_ghost_err :
@@ -3551,6 +4334,64 @@ assert (H_gv: ghost_valuation_of c <> ghost_valuation_of c').
   assumption.
 inversion H0; subst.
 inversion H4; subst; try (elim H_gv; reflexivity).
+inversion H2; subst.
+
+assert (H_tmp : ghost_valuation_of (upd_gv gv gvar v, h, normal c0 m (successor p c0 m pc) s ls :: ars) = upd_gv gv gvar v).
+  reflexivity.
+rewrite H_tmp in H1; clear H_tmp.
+assert (H_tmp : ghost_valuation_of (gv, h, normal c0 m pc s ls :: ars) = gv).
+  reflexivity.
+rewrite H_tmp in H; clear H_tmp.
+
+
+
+exists e.
+split.
+apply instr_at_to_current.
+
+pose proof ghostid_eq_dec.
+pose proof (H4 gvar gs).
+elim H5; intros; subst.
+(* case gvar = gs *)
+assumption.
+
+(* case gvar <> gs *)
+contradict H.
+unfold violating_sec_state in H1.
+unfold violating_sec_state.
+unfold upd_gv in H1.
+pose proof (ghostid_neq_false).
+rewrite H in H1.
+assumption.
+
+intro.
+elim H6.
+rewrite H7; reflexivity.
+
+unfold violating_sec_state in H1.
+unfold violating_sec_state in H.
+assert (H_tmp : ghost_valuation_of (gv, h, normal c0 m pc s ls :: ars) = gv).
+  reflexivity.
+rewrite H_tmp; clear H_tmp.
+
+pose proof ghostid_eq_dec.
+pose proof (H4 gvar gs).
+elim H5; clear H5; intros.
+unfold upd_gv in H1.
+assert (beq_nat gs gvar = true).
+  rewrite H5.
+  rewrite (beq_nat_refl gs).
+  reflexivity.
+rewrite H6 in H1.
+subst.
+assumption.
+
+pose proof ghostid_neq_false.
+
+unfold upd_gv in H1.
+rewrite H6 in H1.
+elim H; assumption.
+intro; elim H5; subst; reflexivity.
 Qed.
 
 
@@ -3698,6 +4539,9 @@ assert (normal_conf c').
     inversion H8; subst;
       injection H6; intros; subst;
         rewrite H_curr_inst in * |-; try discriminate.
+    inversion H6; subst.
+    apply is_norm_conf.
+
 
 apply H5 with (a := annotations_of (classes pg c m) (label_function_of (classes pg c m) l0)) in H6.
 apply H_tmp in H6.
@@ -3723,6 +4567,13 @@ inversion H_trans; subst.
 inversion H9; subst;
 injection H7; intros; subst;
 rewrite H_curr_inst in * |-; try discriminate.
+(**)
+inversion H7; subst.
+(* according to H_curr_inst and H17, gvar=gs and x=e*)
+simpl.
+unfold ast_at.
+unfold successor.
+reflexivity.
 inversion H_curr_inst.
 destruct p.
 discriminate.
