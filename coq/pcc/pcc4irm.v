@@ -3121,8 +3121,6 @@ assumption.
 rewrite list_rearrange.
 rewrite -app_nil_end.
 
-Check gus_eq_seen_gus.
-
 have H3: (e ++ (gv, h, normal c m pc s ls :: ars0)
   :: (upd_gv gv gid v, h, normal c m (successor p c m pc) s ls :: ars0) :: nil 
   =
@@ -3594,87 +3592,40 @@ Qed.
 
 Lemma gus_pref_impl_exec_pref : forall p e gus_pref `(prefix gus_pref (ghost_updates_of p e)),
     exists e_pref, prefix e_pref e /\ ghost_updates_of p e_pref = gus_pref.
-intros p e.
-elim e; intros.
-exists nil.
-split.
-apply prefix_nil.
-inversion prefix0.
-reflexivity.
-
-destruct gus_pref.
-exists nil; split.
-apply prefix_nil.
-reflexivity.
-
-case_eq (ghost_update_of p a).
-intros.
-inversion prefix0.
-destruct l.
-inversion H4.
-pose proof (H gus_pref).
-rewrite H0 in H4.
-assert (H_listeq : l' = ghost_updates_of p (c :: l)).
-  inversion H4; subst; reflexivity.
-rewrite H_listeq in H2.
-apply H5 in H2.
-elim H2; intros.
-elim H6; intros.
-
-(* clear case in which x is nil *)
-destruct x.
-subst.
-exists (a :: c :: nil).
-split.
-repeat apply prefix_next.
-apply prefix_nil.
-simpl.
-rewrite H0.
-inversion H4; subst; reflexivity.
-
-exists (a :: c0 :: x).
-split.
-apply prefix_next.
-assumption.
-
-rewrite <- H8.
-
-assert (H_tmp : g = g0).
-  inversion H4; subst; reflexivity.
-subst.
-
-unfold ghost_updates_of.
-rewrite H0.
-reflexivity.
-
-pose proof (H (g :: gus_pref)).
-intros.
-
-destruct l.
-simpl in prefix0.
-inversion prefix0.
-assert (ghost_updates_of p (a :: c :: l) = ghost_updates_of p (c :: l)).
-  unfold ghost_updates_of at 1.
-rewrite H1.
-reflexivity.
-rewrite H2 in prefix0.
-
-apply H0 in prefix0.
-elim prefix0; intros.
-elim H3; intros.
-exists (a :: x).
-split.
-apply prefix_next.
-assumption.
-
-destruct x.
-inversion H5.
-assert (ghost_updates_of p (a :: c0 :: x) = ghost_updates_of p (c0 :: x)).
-  unfold ghost_updates_of at 1.
-  rewrite H1.
-  reflexivity.
-rewrite H6.
-assumption.
+Proof.
+ move => p.
+ elim => [gus_pref prefix0|a l IH].
+ - by exists nil; inversion prefix0; split; [ apply prefix_nil | done ].
+ - case => [|g gus_pref].
+   * by exists nil; split; [ apply prefix_nil | done ].
+   * case H: (ghost_update_of p a) => [g0|] prefix0.
+     + inversion prefix0 as [|g1 l' l0 H0 [H1 H2] H3].
+       move: IH prefix0 H3.
+       case: l => [|a' l] IH prefix0 H3; first done.
+       pose proof (IH gus_pref) as H4.
+       rewrite H {IH} in H3.
+       have H5: l0 = ghost_updates_of p (a' :: l) by inversion H3.
+       rewrite H5 {H5} in H0.
+       apply H4 in H0.
+       elim: H0. 
+       case => [H0|a0 l1 H0]; elim: H0 => H0 H5.
+       - exists (a :: a' :: nil); split; first by do 2!apply prefix_next; apply prefix_nil.
+         by rewrite /= H -H5; inversion H3.
+       - exists (a :: a0 :: l1); split; first by apply prefix_next.
+         have H7: g = g0 by inversion H3.
+         by rewrite -H5 H7 /ghost_updates_of H.
+     + pose proof (IH (g :: gus_pref)) as H0.
+       move: IH prefix0 H0.
+       case: l => [IH prefix0|a' l IH]; first by inversion prefix0.
+       have -> : ghost_updates_of p (a :: a' :: l) = ghost_updates_of p (a' :: l) by rewrite {1}/ghost_updates_of H.
+       move => prefix0 H0.
+       apply H0 in prefix0.              
+       elim: prefix0 => l' H1.
+       elim: H1 => H1 H2.
+       exists (a :: l'); split; first by apply prefix_next.           
+       move: H1 H2.
+       case: l' => [|a0 l'] H1 H2; first by inversion H2.
+       by have -> : ghost_updates_of p (a :: a0 :: l') = ghost_updates_of p (a0 :: l') by rewrite {1}/ghost_updates_of H.
 Qed.
 
 Lemma to_be_or_not_to_be_ghost :
