@@ -3604,16 +3604,15 @@ Proof.
        case: l => [|a' l] IH prefix0 H3; first done.
        pose proof (IH gus_pref) as H4.
        rewrite H {IH} in H3.
-       have H5: l0 = ghost_updates_of p (a' :: l) by inversion H3.
-       rewrite H5 {H5} in H0.
-       apply H4 in H0.
+       move: H0; have -> : l0 = ghost_updates_of p (a' :: l) by inversion H3.       
+       move => H0; apply H4 in H0.
        elim: H0. 
        case => [H0|a0 l1 H0]; elim: H0 => H0 H5.
        - exists (a :: a' :: nil); split; first by do 2!apply prefix_next; apply prefix_nil.
          by rewrite /= H -H5; inversion H3.
        - exists (a :: a0 :: l1); split; first by apply prefix_next.
          have H7: g = g0 by inversion H3.
-         by rewrite -H5 H7 /ghost_updates_of H.
+         by rewrite -H5 H7 {1}/ghost_updates_of H.
      + pose proof (IH (g :: gus_pref)) as H0.
        move: IH prefix0 H0.
        case: l => [IH prefix0|a' l IH]; first by inversion prefix0.
