@@ -342,6 +342,14 @@ Section conf_classes.
       ~ before_gu_conf  cid mid /\ ~ after_gu_conf  cid mid /\
       ~ before_ssu_conf cid mid /\ ~ after_ssu_conf cid mid.
 
+  Lemma conf_cases_exhaustive :
+    (exists cid, exists mid, before_gu_conf cid mid) \/
+    (exists cid, exists mid, before_ssu_conf cid mid) \/
+    (exists cid, exists mid, after_gu_conf cid mid) \/
+    (exists cid, exists mid, after_ssu_conf cid mid) \/
+    non_sra_conf.
+  Admitted.
+
 End conf_classes.
 
 
@@ -356,10 +364,16 @@ Lemma exec_tail_cases :
       (exists cid, exists mid, after_ssu_conf pg c cid mid /\ ssus = gus ++ (contr (after, cid, mid)) :: nil) \/
       (exists cid, exists mid, after_gu_conf contr pg c cid mid /\ ssus = gus) \/
       (non_sra_conf contr pg c /\ ssus = gus).
-(* Work in progress *)
-(* See temp2.v in repository for a sketch proof. *)
-(* It's a straigt forward induction over the length of the execution and
-   a case split on the type of the last configuration *)
+move => contr p pg H.
+elim/rev_ind => [c|c e].
+(* base case *)
+- pose proof (conf_cases_exhaustive contr p c) as H_exh.
+(*  move: H_exh => [H_befgu|[H_befssu|]].
+  
+  move => .
+[H_befgu | [H_befssu | [H_aftgu | [H_aftssu | H_nonsra]]]].
+(* inductive case *)
+- *)
 Admitted.
 
 

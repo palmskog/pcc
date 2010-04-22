@@ -295,23 +295,20 @@ inversion execution0; subst.
 right; right; right; right.
 split.
 reflexivity.
-elim H; clear H; intros H. elim H; clear H; intros n H; elim H; clear H; intros H_disc; discriminate.
-elim H; clear H; intros H. elim H; clear H; intros n H; elim H; clear H; intros H_disc; discriminate.
-elim H; clear H; intros H. elim H; clear H; intros n H; elim H; clear H; intros H_disc; discriminate.
-elim H; clear H; intros H. elim H; clear H; intros n H; elim H; clear H; intros H_disc; discriminate.
-elim H; clear H; intros.
+move: H => [H | [ H | [ H | [H | H]]]]; try by (elim: H => n H; elim: H).
+elim: H => H_eq H.
 rewrite b_updates_comp; rewrite a_updates_comp.
-rewrite H0.
+rewrite H.
 reflexivity.
 
 (* case x a *)
 left.
 exists n.
 split; first by reflexivity.
-elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
-elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
-elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
-elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim: H => H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim: H => H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim: H => H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim: H => H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
 elim H; clear H; intros.
 rewrite b_updates_comp a_updates_comp.
 rewrite H0.
@@ -322,10 +319,10 @@ reflexivity.
 right; right; left.
 exists n.
 split; first by reflexivity.
-elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
-elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
-elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
-elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim: H => H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim: H => H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim: H => H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim: H => H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
 elim H; clear H; intros.
 rewrite b_updates_comp a_updates_comp.
 rewrite H0.
@@ -346,17 +343,17 @@ simpl.
 rewrite b_updates_comp.
 auto with datatypes.
 
-elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
-elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
-elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
-elim H; clear H; intros H. discriminate.
+elim: H => H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim: H => H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim: H => H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim: H => H. discriminate.
 
 (* case a x *)
 right; right; right; right.
 split; first by reflexivity.
-elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
-elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
-elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim: H => H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim: H => H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim: H => H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
 elim H; clear H; intros.
 elim H; clear H; intros.
 elim H; clear H; intros.
@@ -371,9 +368,9 @@ elim H; clear H; intros H; discriminate.
 left.
 exists m.
 split; first by reflexivity.
-elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
-elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
-elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim: H => H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim: H => H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim: H => H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
 elim H; clear H; intros.
 elim H; clear H; intros.
 elim H; clear H; intros.
@@ -390,9 +387,9 @@ elim H; clear H; intros H; discriminate.
 right; right; left.
 exists m.
 split; first by reflexivity.
-elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
-elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
-elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim: H => H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim: H => H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim: H => H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
 elim H; clear H; intros.
 elim H; clear H; intros.
 elim H; clear H; intros.
@@ -406,7 +403,7 @@ elim H; clear H; intros H; discriminate.
 (* case b x *)
 right; right; right; right.
 split; first by reflexivity.
-elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim: H => H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
 elim H; clear H; intros.
 elim H; clear H; intros.
 elim H; clear H; intros.
@@ -415,15 +412,15 @@ rewrite a_updates_comp b_updates_comp.
 rewrite -H0.
 rewrite b_updates_comp.
 reflexivity.
-elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
-elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim: H => H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim: H => H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
 elim H; clear H; intros H; discriminate.
 
 (* case b a *)
 left.
 exists m.
 split; first by reflexivity.
-elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim: H => H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
 elim H; clear H; intros.
 elim H; clear H; intros.
 elim H; clear H; intros.
@@ -433,15 +430,15 @@ rewrite -H0.
 rewrite b_updates_comp.
 rewrite -app_nil_end.
 reflexivity.
-elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
-elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim: H => H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim: H => H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
 elim H; clear H; intros H; discriminate.
 
 (* case b b' *)
 right; right; left.
 exists m.
 split; first by reflexivity.
-elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim: H => H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
 elim H; clear H; intros.
 elim H; clear H; intros.
 elim H; clear H; intros.
@@ -450,16 +447,16 @@ rewrite b_updates_comp.
 rewrite -H0.
 rewrite b_updates_comp.
 reflexivity.
-elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
-elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim: H => H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim: H => H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
 elim H; clear H; intros H; discriminate.
 
 (* case b' a' *)
 right; right; right; left.
 exists n.
 split; first by reflexivity.
-elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
-elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim: H => H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim: H => H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
 elim H; clear H; intros.
 elim H; clear H; intros.
 elim H; clear H; intros.
@@ -469,7 +466,7 @@ simpl.
 rewrite -2!app_nil_end.
 rewrite -H0.
 reflexivity.
-elim H; clear H; intros H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
+elim: H => H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; discriminate.
 elim H; clear H; intros H; discriminate.
 Qed.
 
