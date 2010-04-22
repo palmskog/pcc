@@ -367,15 +367,28 @@ Lemma exec_tail_cases :
 move => contr p pg H.
 elim/rev_ind => [c|c e].
 (* base case *)
-- pose proof (conf_cases_exhaustive contr p c) as H_exh.
-(*  move: H_exh => [H_befgu|[H_befssu|]].
-  
-  move => .
-[H_befgu | [H_befssu | [H_aftgu | [H_aftssu | H_nonsra]]]].
+- pose proof (conf_cases_exhaustive contr p c) as H0.
+  move: H0 => 
+    [ [cid [mid H_befgus] ]|
+        [ [cid [mid H_befssu] ]|
+          [ [cid [mid H_aftgu] ]|
+            [ [cid [mid H_aftssu] ]|
+              H_nonsra] ] ] ] H0 sus H1 gus.
+(*
+  (* befgus *)
+  * 
+  (* befssu *)
+  * 
+  (* aftgu *)
+  *
+  (* aftssu *)
+  * 
+  (* nonsra *)
+  *
 (* inductive case *)
-- *)
+-
+*)
 Admitted.
-
 
 (* Work in progress. *)
 Lemma exists_exec_with_eq_seen_gus :
