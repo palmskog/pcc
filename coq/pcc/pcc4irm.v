@@ -371,59 +371,59 @@ Lemma exec_tail_cases :
       (exists cid, exists mid, after_ssu_conf pg c cid mid /\ ssus = gus ++ (contr (after, cid, mid)) :: nil) \/
       (exists cid, exists mid, after_gu_conf contr pg c cid mid /\ ssus = gus) \/
       (non_sra_conf contr pg c /\ ssus = gus).
-move => contr p pg H.
-elim/rev_ind => [c|c e].
-(* base case *)
-- pose proof (conf_cases_exhaustive contr pg c) as H0.
-  move: H0 => 
-    [ [cid [mid H_befgus] ]|
-        [ [cid [mid H_befssu] ]|
-          [ [cid [mid H_aftssu] ]|
-            [ [cid [mid H_aftgu] ]|
-              H_nonsra] ] ] ] H0 sus H1 gus.
-  (* befgus *)
-  * left; exists cid; exists mid.
-    split; first done.
-    rewrite /= in H1.
-    have H2: sus = nil.
-     inversion H1; first done.
-     + rewrite /observed_event in H2.
-       rewrite /before_gu_conf /current_instr in H_befgus.
-       destruct c.
-       destruct p0.
-       destruct l; first done.
-       destruct a; last done.
-       inversion H_befgus.
-       by rewrite H6 in H2.
-     + rewrite /observed_event in H2.
-       rewrite /before_gu_conf /current_instr in H_befgus.
-       destruct c.
-       destruct p0.
-       destruct l; first done.
-       destruct a; last done.
-       inversion H_befgus.
-       by rewrite H6 in H2.
-    move: H1; rewrite H2 /gus /= /ghost_update_of {H2 gus} => H1.
-    rewrite /before_gu_conf in H_befgus.
-    by rewrite H_befgus.
-  (* befssu *)
-  * right; left; exists cid; exists mid.
-    split; first done.
-    have H2: In c (nil ++ c :: nil) by auto with datatypes.
-    have H3: (exists cid, exists mid, before_ssu_conf pg c cid mid) by exists cid; exists mid.
-    pose proof (befgu_prec_befssu contr H0 H2 H3) as H4.
-    elim: H4 => c0 H4.
-    elim: H4 => H4 H5.
-    elim: H5 => pref H5.
-    elim: H5 => suff H5.
-    apply list_neq_length in H5; first by contradict H5.
-    rewrite 2!app_length /= => H_eq.
-    by omega.
-  (* aftssu *)
-  * right; right; left; exists cid; exists mid.
-    split; first done.
-
-(**)
+Proof.
+ move => contr p pg H.
+ elim/rev_ind => [c|c e].
+ (* base case *)
+ - have ->: nil ++ c :: nil = c :: nil by done.
+   pose proof (conf_cases_exhaustive contr pg c) as H0.
+   move: H0 => 
+     [ [cid [mid H_befgus] ]|
+         [ [cid [mid H_befssu] ]|
+           [ [cid [mid H_aftssu] ]|
+             [ [cid [mid H_aftgu] ]|
+               H_nonsra] ] ] ] H0 sus H1 gus.
+   (* befgus *)
+   * left; exists cid; exists mid.
+     split; first done.
+     have H2: sus = nil.
+      inversion H1 as [|c0 | ]; first done.
+      + rewrite /observed_event in H2.
+        rewrite /before_gu_conf /current_instr in H_befgus.
+        destruct c; destruct p0.
+        destruct l; first done.
+        destruct a; last done.
+        inversion H_befgus as [ [H5] ].
+        by rewrite H5 in H2.
+      + rewrite /observed_event in H2.
+        rewrite /before_gu_conf /current_instr in H_befgus.
+        destruct c.
+        destruct p0.
+        destruct l; first done.
+        destruct a; last done.
+        inversion H_befgus.
+        by rewrite H6 in H2.
+     move: H1; rewrite H2 /gus /= /ghost_update_of {H2 gus} => H1.
+     rewrite /before_gu_conf in H_befgus.
+     by rewrite H_befgus.
+   (* befssu *)
+   * right; left; exists cid; exists mid.
+     split; first done.
+     have H2: In c (c :: nil) by auto with datatypes.
+     have H3: (exists cid, exists mid, before_ssu_conf pg c cid mid) by exists cid; exists mid.
+     pose proof (befgu_prec_befssu contr H0 H2 H3) as H4.
+     elim: H4 => c0 H4.
+     elim: H4 => H4 H5.
+     elim: H5 => pref H5.
+     elim: H5 => suff H5.
+     apply list_neq_length in H5; first by contradict H5.
+     rewrite 1!app_length /= => H_eq.
+     by omega.
+   (* aftssu *)
+   * right; right; left; exists cid; exists mid.
+     split; first done.
+ 
+ (**)
 have H_gusnil : gus = nil.
 rewrite /gus.
 rewrite /seen_ghost_updates_of.
