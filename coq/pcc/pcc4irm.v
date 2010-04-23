@@ -1,9 +1,7 @@
-
-Require Import list_utils.
 Require Export validity.
 Require Export security_defs.
+Require Import list_utils.
 Require Import ssreflect.
-
 
 
 Section contracts.
@@ -356,7 +354,7 @@ Lemma befgu_prec_befssu :
   forall contr `(execution_of p e) `(In c' e),
     (exists cid, exists mid, before_ssu_conf p c' cid mid) ->
     exists c, (exists cid, exists mid, before_gu_conf contr p c cid mid) /\
-      exists pref, exists suff, e = pref ++ c :: c' :: suff.
+      exists prefx, exists suffx, e = prefx ++ c :: c' :: suffx.
 Admitted.
 
 
@@ -395,22 +393,21 @@ Proof.
    * left; exists cid; exists mid.
      split; first done.
      have H2: sus = nil.
-      inversion H1 as [|c0 | ]; first done.
-      + rewrite /observed_event in H2.
+      inversion H1 as [|c0 m arg t' gus' H2 H_bef H3|c0 m arg t' gus' H2 H_bef H3 ]; first done.
+      + rewrite /observed_event in H_bef.
         rewrite /before_gu_conf /current_instr in H_befgus.
         destruct c; destruct p0.
         destruct l; first done.
         destruct a; last done.
-        inversion H_befgus as [ [H5] ].
-        by rewrite H5 in H2.
-      + rewrite /observed_event in H2.
+        inversion H_befgus as [ [H_ingh] ].
+        by rewrite H_ingh in H_bef.
+      + rewrite /observed_event in H_bef.
         rewrite /before_gu_conf /current_instr in H_befgus.
-        destruct c.
-        destruct p0.
+        destruct c; destruct p0.
         destruct l; first done.
         destruct a; last done.
-        inversion H_befgus.
-        by rewrite H6 in H2.
+        inversion H_befgus as [ [H_ingh] ].
+        by rewrite H_ingh in H_bef.
      move: H1; rewrite H2 /gus /= /ghost_update_of {H2 gus} => H1.
      rewrite /before_gu_conf in H_befgus.
      by rewrite H_befgus.
@@ -420,97 +417,71 @@ Proof.
      have H2: In c (c :: nil) by auto with datatypes.
      have H3: (exists cid, exists mid, before_ssu_conf pg c cid mid) by exists cid; exists mid.
      pose proof (befgu_prec_befssu contr H0 H2 H3) as H4.
-     elim: H4 => c0 H4.
-     elim: H4 => H4 H5.
-     elim: H5 => pref H5.
-     elim: H5 => suff H5.
+     move: H4 => [ c0 [H4 [prefx [suffx H5] ] ] ].
      apply list_neq_length in H5; first by contradict H5.
-     rewrite 1!app_length /= => H_eq.
-     by omega.
+     by rewrite app_length /= => H_eq; omega.
    (* aftssu *)
    * right; right; left; exists cid; exists mid.
      split; first done.
- 
- (**)
-have H_gusnil : gus = nil.
-rewrite /gus.
-rewrite /seen_ghost_updates_of.
-simpl.
-rewrite /ghost_update_of.
-rewrite /after_ssu_conf in H_aftssu.
-elim: H_aftssu => H_cid [H_mid H_ret].
-by rewrite H_ret.
-rewrite H_gusnil {H_gusnil gus} /=.
-
-destruct c.
-destruct l.
-- destruct p0 as (gv, h).
-  apply no_empty_ar_stack with (h := h) (gv := gv) in H0; first done.
-  by auto with datatypes.
-- destruct a.
-  have H_aft: event_trace_of pg (nil ++ (p0, normal c m l0 s l1 :: l) :: nil) = (aft_event c m (s[[0]])) :: nil.
-  rewrite /event_trace_of /observed_event.
-  simpl.
-  rewrite /after_ssu_conf in H_aftssu.
-  elim: H_aftssu => [H_cid [H_mid H_ret] ].
-  apply current_to_instr_at in H_ret.
-  rewrite H_ret.
-  by destruct p0.
-rewrite H_aft in H1.
-inversion H1.
-inversion H7.
-rewrite /after_ssu_conf in H_aftssu.
-elim: H_aftssu => [H_cid [H_mid H_ret] ].
-simpl in H_cid.
-destruct p0.
-simpl in H_mid.
-inversion H_cid.
-inversion H_mid.
-by done.
-apply exec_sing_impl_initial in H0.
-by inversion H0.
-      
-  (* aftgu *)
-  * right; right; right; left; exists cid; exists mid.
-    split; first done.
-    have H2: In c (nil ++ c :: nil) by auto with datatypes.
-    have H3: (exists cid, exists mid, after_gu_conf contr pg c cid mid) by exists cid; exists mid.
-    pose proof (aftssu_prec_aftgu contr H0 H2 H3) as H4.
-    elim: H4 => c0 H4.
-    elim: H4 => H4 H5.
-    elim: H5 => pref H5.
-    elim: H5 => suff H5.
-    apply list_neq_length in H5; first by contradict H5.
-    rewrite 2!app_length /= => H_eq.
-    by omega.
-  (* nonsra *)
-  * right; right; right; right.
-    split; first done.
-    rewrite /non_sra_conf in H_nonsra.
-    have H_gusnil : gus = nil.
+     have H_gusnil : gus = nil.
+      rewrite /gus /seen_ghost_updates_of /= /ghost_update_of.
+      rewrite /after_ssu_conf in H_aftssu.
+      elim: H_aftssu => H_cid [H_mid H_ret].
+      by rewrite H_ret.
+     rewrite H_gusnil {H_gusnil gus} /=.
+     destruct c.
+     destruct l.
+     - destruct p0 as (gv, h).
+       apply no_empty_ar_stack with (h := h) (gv := gv) in H0; first done.
+       by auto with datatypes.
+     - destruct a.
+       * have H_af: event_trace_of pg (nil ++ (p0, normal c m l0 s l1 :: l) :: nil) = (aft_event c m (s[[0]])) :: nil.
+          rewrite /event_trace_of /observed_event /=.
+          rewrite /after_ssu_conf in H_aftssu.
+          elim: H_aftssu => [H_cid [H_mid H_ret] ].
+          apply current_to_instr_at in H_ret.        
+          by rewrite H_ret; destruct p0.
+         rewrite H_af {H_af} in H1.
+         inversion H1.
+         inversion H7.
+         rewrite /after_ssu_conf in H_aftssu.
+         elim: H_aftssu => [H_cid [H_mid H_ret] ].
+         rewrite /= in H_cid.
+         destruct p0.
+         rewrite /= in H_mid.
+         by inversion H_cid; inversion H_mid.
+       * by apply exec_sing_impl_initial in H0; inversion H0.
+   (* aftgu *)
+   * right; right; right; left; exists cid; exists mid.
+     split; first done.
+     have H2: In c (c :: nil) by auto with datatypes.
+     have H3: (exists cid, exists mid, after_gu_conf contr pg c cid mid) by exists cid; exists mid.
+     pose proof (aftssu_prec_aftgu contr H0 H2 H3) as H4.
+     move: H4 => [ c0 [H4 [prefx [suffx H5] ] ] ].     
+     apply list_neq_length in H5; first by contradict H5.
+     by rewrite app_length /= => H_eq; omega.
+   (* nonsra *)
+   * right; right; right; right.
+     split; first done.
+     rewrite /non_sra_conf in H_nonsra.
+     have H_gusnil : gus = nil.
       rewrite /gus /= /seen_ghost_updates_of /ghost_update_of {gus}.
       apply exec_sing_impl_initial in H0.
-      (* kalle, hur gör man detta snyggt? *)
-      have H_tmp : exists oi, oi = current_instr pg c.
-        by exists (current_instr pg c).
+      have H_tmp : exists oi, oi = current_instr pg c by exists (current_instr pg c).
       elim: H_tmp => oi H_eq.
       rewrite -H_eq.
-      destruct oi.
+      destruct oi; last done.
       destruct i; try done.
-      inversion H_eq.
       (* follows from H3 and H_nonsra (since c can't point at a ghost instr). *)
       (* I realize now that we may need an extra assumption for this lemma.
          (An assumption that anyway hold at the call site.) *)
-      admit.
-      done.
-    
-    have H_ssunil : sus = nil.
+      admit.          
+     have H_ssunil : sus = nil.
       (* should follow from the fact that c is neigther a call nor a ret (according to H_nonsra). *)
       admit.
-    by rewrite H_gusnil H_ssunil.
-
-(* inductive case *)
-
+     by rewrite H_gusnil H_ssunil.
+ (* inductive case *)
+(*-*)
 Admitted.
 
 (* Work in progress. *)
