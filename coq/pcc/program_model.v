@@ -2,6 +2,7 @@
 Require Export expressions_assertions.
 Require Export Bool.
 Require Import list_utils.
+Require Import ssreflect.
 
 Section program_model.
   
@@ -391,6 +392,14 @@ Qed.
     auto with datatypes.
   Qed.
   
+
+  Lemma exec_sing_impl_initial : forall `(execution_of p (c :: nil)), initial_conf c.
+  Proof.
+    move => p c H_exec.
+    inversion H_exec as [exec H_init H_trans H_eq].
+    by apply H_init.
+  Qed.
+
 
 Lemma exec_append : forall `(execution_of p (e ++ c :: nil)) `(trans p c c'),
   execution_of p (e ++ c :: c' :: nil).

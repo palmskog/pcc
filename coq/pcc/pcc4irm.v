@@ -345,12 +345,19 @@ Section conf_classes.
   Lemma conf_cases_exhaustive :
     (exists cid, exists mid, before_gu_conf cid mid) \/
     (exists cid, exists mid, before_ssu_conf cid mid) \/
-    (exists cid, exists mid, after_gu_conf cid mid) \/
     (exists cid, exists mid, after_ssu_conf cid mid) \/
+    (exists cid, exists mid, after_gu_conf cid mid) \/
     non_sra_conf.
   Admitted.
 
 End conf_classes.
+
+Lemma befgu_prec_befssu :
+  forall contr `(execution_of p e) `(In c' e),
+    (exists cid, exists mid, before_ssu_conf p c' cid mid) ->
+    exists c, (exists cid, exists mid, before_gu_conf contr p c cid mid) /\
+      exists pref, exists suff, e = pref ++ c :: c' :: suff.
+Admitted.
 
 
 Lemma exec_tail_cases :
@@ -367,27 +374,101 @@ Lemma exec_tail_cases :
 move => contr p pg H.
 elim/rev_ind => [c|c e].
 (* base case *)
-- pose proof (conf_cases_exhaustive contr p c) as H0.
+- pose proof (conf_cases_exhaustive contr pg c) as H0.
   move: H0 => 
     [ [cid [mid H_befgus] ]|
         [ [cid [mid H_befssu] ]|
-          [ [cid [mid H_aftgu] ]|
-            [ [cid [mid H_aftssu] ]|
+          [ [cid [mid H_aftssu] ]|
+            [ [cid [mid H_aftgu] ]|
               H_nonsra] ] ] ] H0 sus H1 gus.
-(*
   (* befgus *)
-  * 
+  * left; exists cid; exists mid.
+    split; first done.
+    rewrite /= in H1.
+    have H2: sus = nil.
+     inversion H1; first done.
+     + rewrite /observed_event in H2.
+       rewrite /before_gu_conf /current_instr in H_befgus.
+       destruct c.
+       destruct p0.
+       destruct l; first done.
+       destruct a; last done.
+       inversion H_befgus.
+       by rewrite H6 in H2.
+     + rewrite /observed_event in H2.
+       rewrite /before_gu_conf /current_instr in H_befgus.
+       destruct c.
+       destruct p0.
+       destruct l; first done.
+       destruct a; last done.
+       inversion H_befgus.
+       by rewrite H6 in H2.
+    move: H1; rewrite H2 /gus /= /ghost_update_of {H2 gus} => H1.
+    rewrite /before_gu_conf in H_befgus.
+    by rewrite H_befgus.
   (* befssu *)
-  * 
-  (* aftgu *)
-  *
+  * right; left; exists cid; exists mid.
+    split; first done.
+    have H2: In c (nil ++ c :: nil) by auto with datatypes.
+    have H3: (exists cid, exists mid, before_ssu_conf pg c cid mid) by exists cid; exists mid.
+    pose proof (befgu_prec_befssu contr H0 H2 H3) as H4.
+    elim: H4 => c0 H4.
+    elim: H4 => H4 H5.
+    elim: H5 => pref H5.
+    elim: H5 => suff H5.
+    apply list_neq_length in H5; first by contradict H5.
+    rewrite 2!app_length /= => H_eq.
+    by omega.
   (* aftssu *)
+  * right; right; left; exists cid; exists mid.
+    split; first done.
+
+(**)
+have H_gusnil : gus = nil.
+rewrite /gus.
+rewrite /seen_ghost_updates_of.
+simpl.
+rewrite /ghost_update_of.
+rewrite /after_ssu_conf in H_aftssu.
+elim: H_aftssu => H_cid [H_mid H_ret].
+by rewrite H_ret.
+rewrite H_gusnil {H_gusnil gus} /=.
+
+destruct c.
+destruct l.
+- destruct p0 as (gv, h).
+  apply no_empty_ar_stack with (h := h) (gv := gv) in H0; first done.
+  by auto with datatypes.
+- destruct a.
+  have H_aft: event_trace_of pg (nil ++ (p0, normal c m l0 s l1 :: l) :: nil) = (aft_event c m (s[[0]])) :: nil.
+  rewrite /event_trace_of /observed_event.
+  simpl.
+  rewrite /after_ssu_conf in H_aftssu.
+  elim: H_aftssu => [H_cid [H_mid H_ret] ].
+  apply current_to_instr_at in H_ret.
+  rewrite H_ret.
+  by destruct p0.
+rewrite H_aft in H1.
+inversion H1.
+inversion H7.
+rewrite /after_ssu_conf in H_aftssu.
+elim: H_aftssu => [H_cid [H_mid H_ret] ].
+simpl in H_cid.
+destruct p0.
+simpl in H_mid.
+inversion H_cid.
+inversion H_mid.
+by done.
+apply exec_sing_impl_initial in H0.
+by inversion H0.
+      
+  (* aftgu *)
   * 
   (* nonsra *)
   *
 (* inductive case *)
 -
-*)
+
 Admitted.
 
 (* Work in progress. *)
