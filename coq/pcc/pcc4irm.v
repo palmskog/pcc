@@ -360,6 +360,14 @@ Lemma befgu_prec_befssu :
 Admitted.
 
 
+Lemma aftssu_prec_aftgu :
+  forall contr `(execution_of p e) `(In c' e),
+    (exists cid, exists mid, after_gu_conf contr p c' cid mid) ->
+    exists c, (exists cid, exists mid, after_ssu_conf p c cid mid) /\
+      exists pref, exists suff, e = pref ++ c :: c' :: suff.
+Admitted.
+
+
 Lemma exec_tail_cases :
   forall contr
     `(ghost_inlined contr p pg)
@@ -463,11 +471,45 @@ apply exec_sing_impl_initial in H0.
 by inversion H0.
       
   (* aftgu *)
-  * 
+  * right; right; right; left; exists cid; exists mid.
+    split; first done.
+    have H2: In c (nil ++ c :: nil) by auto with datatypes.
+    have H3: (exists cid, exists mid, after_gu_conf contr pg c cid mid) by exists cid; exists mid.
+    pose proof (aftssu_prec_aftgu contr H0 H2 H3) as H4.
+    elim: H4 => c0 H4.
+    elim: H4 => H4 H5.
+    elim: H5 => pref H5.
+    elim: H5 => suff H5.
+    apply list_neq_length in H5; first by contradict H5.
+    rewrite 2!app_length /= => H_eq.
+    by omega.
   (* nonsra *)
-  *
+  * right; right; right; right.
+    split; first done.
+    rewrite /non_sra_conf in H_nonsra.
+    have H_gusnil : gus = nil.
+      rewrite /gus /= /seen_ghost_updates_of /ghost_update_of {gus}.
+      apply exec_sing_impl_initial in H0.
+      (* kalle, hur gör man detta snyggt? *)
+      have H_tmp : exists oi, oi = current_instr pg c.
+        by exists (current_instr pg c).
+      elim: H_tmp => oi H_eq.
+      rewrite -H_eq.
+      destruct oi.
+      destruct i; try done.
+      inversion H_eq.
+      (* follows from H3 and H_nonsra (since c can't point at a ghost instr). *)
+      (* I realize now that we may need an extra assumption for this lemma.
+         (An assumption that anyway hold at the call site.) *)
+      admit.
+      done.
+    
+    have H_ssunil : sus = nil.
+      (* should follow from the fact that c is neigther a call nor a ret (according to H_nonsra). *)
+      admit.
+    by rewrite H_gusnil H_ssunil.
+
 (* inductive case *)
--
 
 Admitted.
 
