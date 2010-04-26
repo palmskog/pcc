@@ -622,7 +622,7 @@ Proof.
      rewrite H_ex in H_befgus'.
      injection H_befgus' => H_diff {H_befgus' H_ex}.
      admit.     
-   (* H_aftssu H_befssu' - nope *)
+   (* H_aftssu H_befssu' *)
    * have H_in : In c (e ++ c :: c' :: nil) by auto with datatypes.
      pose proof (aftssu_followed_by_aftgu contr H_exec H_in) as H_constr.
      have H_ex : exists cid : classid, exists mid : methid, after_ssu_conf pg c cid mid by exists cid; exists mid.
@@ -641,32 +641,101 @@ Proof.
      rewrite /after_ssu_conf in H_aftssu'.
      move: H_aftssu' => [ H_c [ H_m [ H_aftssu' ] ] ].
      by rewrite H_ex in H_aftssu'.
-   (* H_aftssu H_aftgu' - works *)
+   (* H_aftssu H_aftgu' *)
    * admit.
-   (* H_aftssu H_nonsra' - nope *)
-   * admit.
+   (* H_aftssu H_nonsra' *)
+   * have H_in : In c (e ++ c :: c' :: nil) by auto with datatypes.
+     pose proof (aftssu_followed_by_aftgu contr H_exec H_in) as H_constr.
+     have H_ex : exists cid : classid, exists mid : methid, after_ssu_conf pg c cid mid by exists cid; exists mid.
+     apply H_constr with (c'0 := c') in H_ex; last by exists e; exists nil.
+     move: H_ex => [ cid'' [ mid''] ] H_ex.
+     rewrite /non_sra_conf in H_nonsra'.
+     pose proof (H_nonsra' cid'' mid'') as H_n.
+     by move: H_n => [ H_nbgu [ H_nagu [ H_nbss H_nass ] ] ].
    (* H_aftgu H_befgus' *)
    * admit.
    (* H_aftgu H_befssu' *)
-   * admit.
+   * have H_last : exists e', e ++ c :: c' :: nil = e' ++ c' :: nil. 
+      by exists (e ++ c :: nil); rewrite app_ass -app_comm_cons app_comm_cons.
+     pose proof (befgu_prec_befssu_last contr H_exec H_last) as H_constr.
+     have H_ex : exists cid : classid, exists mid : methid, before_ssu_conf pg c' cid mid by exists cid'; exists mid'.
+     apply H_constr in H_ex.  
+     move: H_ex => [ c0 [ [ cid'' [ mid'' H_bg ] ] [ pref H_eq ] ] ].
+     have H_e: c0 = c.    
+      rewrite list_rearrange in H_eq; apply sym_eq in H_eq; rewrite list_rearrange in H_eq.
+      apply app_inj_tail in H_eq.
+      move: H_eq => [ H_eq H_c'eq ].
+      apply app_inj_tail in H_eq.
+      by move: H_eq => [ H_eq H_cc0 ].    
+     rewrite H_e in H_bg.
+     rewrite /before_gu_conf in H_bg.
+     rewrite /after_gu_conf in H_aftgu.
+     rewrite H_bg in H_aftgu.
+     injection H_aftgu => H_diff.
+     admit.
    (* H_aftgu H_aftssu' *)
    * admit.
    (* H_aftgu H_aftgu' *)
-   * admit.
+   * have H_last : exists e', e ++ c :: c' :: nil = e' ++ c' :: nil. 
+      by exists (e ++ c :: nil); rewrite app_ass -app_comm_cons app_comm_cons.
+     pose proof (aftssu_prec_aftgu_last contr H_exec H_last) as H_constr.
+     have H_ex : exists cid : classid, exists mid : methid, after_gu_conf contr pg c' cid mid by exists cid'; exists mid'.
+     apply H_constr in H_ex.  
+     move: H_ex => [ c0 [ [ cid'' [ mid'' H_bg ] ] [ pref H_eq ] ] ].
+     have H_e: c0 = c.    
+      rewrite list_rearrange in H_eq; apply sym_eq in H_eq; rewrite list_rearrange in H_eq.
+      apply app_inj_tail in H_eq.
+      move: H_eq => [ H_eq H_c'eq ].
+      apply app_inj_tail in H_eq.
+      by move: H_eq => [ H_eq H_cc0 ].    
+     rewrite H_e in H_bg.
+     rewrite /after_ssu_conf in H_bg.
+     rewrite /after_gu_conf in H_aftgu.
+     move: H_bg => [ H_c [ H_m [ H_bg ] ] ].
+     by rewrite H_aftgu in H_bg.
    (* H_aftgu H_nonsra' *)
    * admit.
    (* H_nonsra H_befgus' *)
    * admit.
    (* H_nonsra H_befssu' *)
-   * admit.
+   * have H_last : exists e', e ++ c :: c' :: nil = e' ++ c' :: nil. 
+      by exists (e ++ c :: nil); rewrite app_ass -app_comm_cons app_comm_cons.
+     pose proof (befgu_prec_befssu_last contr H_exec H_last) as H_constr.
+     have H_ex : exists cid : classid, exists mid : methid, before_ssu_conf pg c' cid mid by exists cid'; exists mid'.
+     apply H_constr in H_ex.  
+     move: H_ex => [ c0 [ [ cid'' [ mid'' H_bg ] ] [ pref H_eq ] ] ].
+     have H_e: c0 = c.    
+      rewrite list_rearrange in H_eq; apply sym_eq in H_eq; rewrite list_rearrange in H_eq.
+      apply app_inj_tail in H_eq.
+      move: H_eq => [ H_eq H_c'eq ].
+      apply app_inj_tail in H_eq.
+      by move: H_eq => [ H_eq H_cc0 ].    
+     rewrite H_e in H_bg.
+     rewrite /non_sra_conf in H_nonsra.
+     pose proof (H_nonsra cid'' mid'') as H_n.
+     by move: H_n => [ H_nbgu [ H_nagu [ H_nbss H_nass ] ] ].
    (* H_nonsra H_aftssu' *)
    * admit.
    (* H_nonsra H_aftgu' *)
-   * admit.
+   * have H_last : exists e', e ++ c :: c' :: nil = e' ++ c' :: nil. 
+      by exists (e ++ c :: nil); rewrite app_ass -app_comm_cons app_comm_cons.
+     pose proof (aftssu_prec_aftgu_last contr H_exec H_last) as H_constr.
+     have H_ex : exists cid : classid, exists mid : methid, after_gu_conf contr pg c' cid mid by exists cid'; exists mid'.
+     apply H_constr in H_ex.  
+     move: H_ex => [ c0 [ [ cid'' [ mid'' H_bg ] ] [ pref H_eq ] ] ].
+     have H_e: c0 = c.    
+      rewrite list_rearrange in H_eq; apply sym_eq in H_eq; rewrite list_rearrange in H_eq.
+      apply app_inj_tail in H_eq.
+      move: H_eq => [ H_eq H_c'eq ].
+      apply app_inj_tail in H_eq.
+      by move: H_eq => [ H_eq H_cc0 ].    
+     rewrite H_e in H_bg.
+     rewrite /non_sra_conf in H_nonsra.
+     pose proof (H_nonsra cid'' mid'') as H_n.
+     by move: H_n => [ H_nbgu [ H_nagu [ H_nbss H_nass ] ] ].
    (* H_nonsra H_nonsra' *)
    * admit.
 Qed.
-
 
 
 (* Work in progress. *)
