@@ -520,9 +520,22 @@ Proof.
    (* H_befgus H_befssu' *)
    * admit.
    (* H_befgus H_aftssu' *)
-   * admit.
+   * have H_in : In c (e ++ c :: c' :: nil) by auto with datatypes.
+     pose proof (befgu_followed_by_befssu contr H_exec H_in) as H_constr.
+     have H_ex : exists cid : classid, exists mid : methid, before_gu_conf contr pg c cid mid by exists cid; exists mid.
+     apply H_constr with (c'0 := c') in H_ex; last by exists e; exists nil.
+     move: H_ex => [ cid'' [ mid''] ] H_ex.
+     rewrite /before_ssu_conf /after_ssu_conf in H_ex H_aftssu'.
+     move: H_aftssu' => [ H_cid [ H_mid H_instr ] ].
+     by rewrite H_ex in H_instr.
    (* H_befgus H_aftgu' *)
-   * admit.
+   * have H_in : In c (e ++ c :: c' :: nil) by auto with datatypes.
+     pose proof (befgu_followed_by_befssu contr H_exec H_in) as H_constr.
+     have H_ex : exists cid : classid, exists mid : methid, before_gu_conf contr pg c cid mid by exists cid; exists mid.
+     apply H_constr with (c'0 := c') in H_ex; last by exists e; exists nil.
+     move: H_ex => [ cid'' [ mid''] ] H_ex.
+     rewrite /before_ssu_conf /after_gu_conf in H_ex H_aftgu'.
+     by rewrite H_ex in H_aftgu'.
    (* H_befgus H_nonsra' *)
    * admit.
    (* H_befssu H_befgus' *)
