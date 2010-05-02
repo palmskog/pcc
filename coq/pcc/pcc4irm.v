@@ -724,7 +724,9 @@ Proof.
      apply H_constr in H_ex.  
      move: H_ex => [ c0 [ [ cid'' [ mid'' H_bg ] ] [ pref H_eq ] ] ].
      have H_e: c0 = c.    
-      rewrite list_rearrange in H_eq; apply sym_eq in H_eq; rewrite list_rearrange in H_eq.
+      rewrite list_rearrange in H_eq.
+      apply sym_eq in H_eq. 
+      rewrite list_rearrange in H_eq.
       apply app_inj_tail in H_eq.
       move: H_eq => [ H_eq H_c'eq ].
       apply app_inj_tail in H_eq.
