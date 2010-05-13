@@ -4,62 +4,62 @@ Require Import list_utils.
 Require Import ssreflect.
 
 
-Section contracts.
+Section Contracts.
 
-  (* For simplicity: The ghost state is represented by a single fixed ghost variable 'gs'. *)
-  (* We still have a notion of ghost valuations to be able to handle local ghost variables
-     used for storing arguments and return values. *)
-  Variable gs : ghostid.
-  
-  
-  Lemma seen_ghost_updates_of_distr p :
-    forall e1 e2, seen_ghost_updates_of p (e1 ++ e2) = seen_ghost_updates_of p e1 ++ seen_ghost_updates_of p e2. 
-    induction e1; intros.
-    repeat rewrite <- app_nil_end.
-    reflexivity.
-    rewrite list_rearrange3.
-    simpl.
-    destruct (ghost_update_of p a).
-    rewrite list_rearrange3.
-    rewrite IHe1.
-    reflexivity.
-    apply IHe1.
-  Qed.
-  
-  Lemma gus_eq_seen_gus : forall p e c, 
-    ghost_updates_of p (e ++ c :: nil) = seen_ghost_updates_of p e.
-    induction e.
-    reflexivity.
-    intros.
-    simpl.
-    destruct (ghost_update_of p a).
-    rewrite IHe.
-    destruct e; [ | rewrite <- app_comm_cons ]; reflexivity.
-    rewrite IHe.
-    destruct e; [ | rewrite <- app_comm_cons ]; reflexivity.
-  Qed.
-  
-  Lemma gu_impl_normal : forall `(ghost_update_of p c = Some gu), normal_conf c.
-    intros.
-    unfold ghost_update_of in H.
-    assert (exists oi, current_instr p c = oi).
-      exists (current_instr p c); reflexivity.
-    elim H0; clear H0; intros.
-    rewrite H0 in H.
-    destruct x.
-    destruct i; try discriminate.
-    unfold current_instr in H0.
-    destruct c.
-    destruct l.
-    destruct p0.
-    discriminate.
-    destruct a.
-    destruct p0.
-    apply is_norm_conf.
-    destruct p0.
-    discriminate.
-    discriminate.
-  Qed.
+(* For simplicity: The ghost state is represented by a single fixed ghost variable 'gs'. *)
+(* We still have a notion of ghost valuations to be able to handle local ghost variables
+   used for storing arguments and return values. *)
+Variable gs : ghostid.
+
+
+Lemma seen_ghost_updates_of_distr p :
+  forall e1 e2, seen_ghost_updates_of p (e1 ++ e2) = seen_ghost_updates_of p e1 ++ seen_ghost_updates_of p e2. 
+  induction e1; intros.
+  repeat rewrite <- app_nil_end.
+  reflexivity.
+  rewrite list_rearrange3.
+  simpl.
+  destruct (ghost_update_of p a).
+  rewrite list_rearrange3.
+  rewrite IHe1.
+  reflexivity.
+  apply IHe1.
+Qed.
+
+Lemma gus_eq_seen_gus : forall p e c, 
+  ghost_updates_of p (e ++ c :: nil) = seen_ghost_updates_of p e.
+  induction e.
+  reflexivity.
+  intros.
+  simpl.
+  destruct (ghost_update_of p a).
+  rewrite IHe.
+  destruct e; [ | rewrite <- app_comm_cons ]; reflexivity.
+  rewrite IHe.
+  destruct e; [ | rewrite <- app_comm_cons ]; reflexivity.
+Qed.
+
+Lemma gu_impl_normal : forall `(ghost_update_of p c = Some gu), normal_conf c.
+  intros.
+  unfold ghost_update_of in H.
+  assert (exists oi, current_instr p c = oi).
+    exists (current_instr p c); reflexivity.
+  elim H0; clear H0; intros.
+  rewrite H0 in H.
+  destruct x.
+  destruct i; try discriminate.
+  unfold current_instr in H0.
+  destruct c.
+  destruct l.
+  destruct p0.
+  discriminate.
+  destruct a.
+  destruct p0.
+  apply is_norm_conf.
+  destruct p0.
+  discriminate.
+  discriminate.
+Qed.
   
 Lemma ghost_update_impl_ghost_instr :
   forall `(ghost_update_of p (gv, h, normal c m pc s ls :: ars0) = Some gu),
@@ -317,38 +317,37 @@ rewrite H_eq2.
 reflexivity.
 Qed.
 
-
 (* EXISTS_EXEC_WITH_EQ_GUS Begin *)
-Section conf_classes.
+Section ConfClasses.
   
-  Variable (contr: contract) (p: program) (c: conf).
-  
-  Definition before_gu_conf cid mid : Prop :=
-    current_instr p c = Some (ghost_instr (contr (before, cid, mid))).
-  
-  Definition before_ssu_conf cid mid : Prop :=
-    current_instr p c = Some (invoke cid mid).
-  
-  Definition after_gu_conf cid mid : Prop :=
-    current_instr p c = Some (ghost_instr (contr (after, cid, mid))).
+Variable (contr: contract) (p: program) (c: conf).
 
-  Definition after_ssu_conf cid mid : Prop :=
-    class_of c = Some cid /\ meth_of c = Some mid /\ current_instr p c = Some ret.
+Definition before_gu_conf cid mid : Prop :=
+  current_instr p c = Some (ghost_instr (contr (before, cid, mid))).
 
-  Definition non_sra_conf : Prop :=
-    forall cid mid,
-      ~ before_gu_conf  cid mid /\ ~ after_gu_conf  cid mid /\
-      ~ before_ssu_conf cid mid /\ ~ after_ssu_conf cid mid.
+Definition before_ssu_conf cid mid : Prop :=
+  current_instr p c = Some (invoke cid mid).
 
-  Lemma conf_cases_exhaustive :
-    (exists cid, exists mid, before_gu_conf cid mid) \/
-    (exists cid, exists mid, before_ssu_conf cid mid) \/
-    (exists cid, exists mid, after_ssu_conf cid mid) \/
-    (exists cid, exists mid, after_gu_conf cid mid) \/
-    non_sra_conf.
-  Admitted.
+Definition after_gu_conf cid mid : Prop :=
+  current_instr p c = Some (ghost_instr (contr (after, cid, mid))).
 
-End conf_classes.
+Definition after_ssu_conf cid mid : Prop :=
+  class_of c = Some cid /\ meth_of c = Some mid /\ current_instr p c = Some ret.
+
+Definition non_sra_conf : Prop :=
+  forall cid mid,
+    ~ before_gu_conf  cid mid /\ ~ after_gu_conf  cid mid /\
+    ~ before_ssu_conf cid mid /\ ~ after_ssu_conf cid mid.
+
+Lemma conf_cases_exhaustive :
+  (exists cid, exists mid, before_gu_conf cid mid) \/
+  (exists cid, exists mid, before_ssu_conf cid mid) \/
+  (exists cid, exists mid, after_ssu_conf cid mid) \/
+  (exists cid, exists mid, after_gu_conf cid mid) \/
+  non_sra_conf.
+Admitted.
+
+End ConfClasses.
 
 Lemma befgu_prec_befssu :
   forall contr `(execution_of p e) `(In c' e),
@@ -1367,260 +1366,259 @@ Qed.
   Qed.
   
   
-  Section ghost_simulation.
-    
-    Variable contr: contract.
-    Variable p pg: program.
-    Hypothesis gi_p_pg : ghost_inlined contr p pg.
-    
-    (* Why do we need a pg (ghost inlined version of p) as a variable / param
-       in this section?
-       Otherwise we wouldn't know which labels to expect in the simulated
-       execution. (The ghost inliner is formalized as a relation (not a
-       function), and instructions are arbitrarily labeled by a labeling
-       function. *)
-    
-    Inductive ars_sim_head : option act_record -> option act_record -> Prop :=
-    | ars_exc : forall o, ars_sim_head (Some (exceptional o)) (Some (exceptional o))
-    | ars_inv : forall c m pc s l slg,
-          (exists c', exists m', instr_at p c m pc = invoke c' m') ->
-          slg = label_function_of (classes pg c m) ->
-          ars_sim_head (Some (normal c m pc s l)) (Some (normal c m (slg pc) s l))
-    | ars_non_inv : forall c m pc s l,
-          (forall c' m', instr_at p c m pc <> invoke c' m') ->
-          ars_sim_head (Some (normal c m pc s l)) (Some (normal c m pc s l)).
-    
-    Inductive ars_sim_tail : (list act_record) -> (list act_record) -> Prop :=
-    | ars_base : ars_sim_tail nil nil
-    | ars_subst : forall c m s l ars ars' sl slg pc,
-          ars_sim_tail ars ars' ->
-          (exists c', exists m', instr_at p c m pc = invoke c' m') ->
-          sl = label_function_of (classes p c m) ->
-          slg = label_function_of (classes pg c m) ->
-          ars_sim_tail ((normal c m (sl pc) s l) :: ars) ((normal c m (slg (slg pc)) s l) :: ars')
-    | ars_skip : forall c m s l ars ars' pc sl,
-          ars_sim_tail ars ars' ->
-          (forall c' m', instr_at p c m pc <> invoke c' m') ->
-          sl = label_function_of (classes p c m) ->
-          ars_sim_tail ((normal c m (sl pc) s l) :: ars) ((normal c m (sl pc) s l) :: ars').
-    
-    
-    Definition sim_p (c cg: conf) := heap_of c = heap_of cg /\
-      ars_sim_head (head (ars_of c)) (head (ars_of c)) /\
-      ars_sim_tail (ars_of c) (ars_of cg).
+Section GhostSimulation.
+  
+  Variable contr: contract.
+  Variable p pg: program.
+  Hypothesis gi_p_pg : ghost_inlined contr p pg.
+  
+  (* Why do we need a pg (ghost inlined version of p) as a variable / param
+     in this section?
+     Otherwise we wouldn't know which labels to expect in the simulated
+     execution. (The ghost inliner is formalized as a relation (not a
+     function), and instructions are arbitrarily labeled by a labeling
+     function. *)
+  
+  Inductive ars_sim_head : option act_record -> option act_record -> Prop :=
+  | ars_exc : forall o, ars_sim_head (Some (exceptional o)) (Some (exceptional o))
+  | ars_inv : forall c m pc s l slg,
+        (exists c', exists m', instr_at p c m pc = invoke c' m') ->
+        slg = label_function_of (classes pg c m) ->
+        ars_sim_head (Some (normal c m pc s l)) (Some (normal c m (slg pc) s l))
+  | ars_non_inv : forall c m pc s l,
+        (forall c' m', instr_at p c m pc <> invoke c' m') ->
+        ars_sim_head (Some (normal c m pc s l)) (Some (normal c m pc s l)).
+  
+  Inductive ars_sim_tail : (list act_record) -> (list act_record) -> Prop :=
+  | ars_base : ars_sim_tail nil nil
+  | ars_subst : forall c m s l ars ars' sl slg pc,
+        ars_sim_tail ars ars' ->
+        (exists c', exists m', instr_at p c m pc = invoke c' m') ->
+        sl = label_function_of (classes p c m) ->
+        slg = label_function_of (classes pg c m) ->
+        ars_sim_tail ((normal c m (sl pc) s l) :: ars) ((normal c m (slg (slg pc)) s l) :: ars')
+  | ars_skip : forall c m s l ars ars' pc sl,
+        ars_sim_tail ars ars' ->
+        (forall c' m', instr_at p c m pc <> invoke c' m') ->
+        sl = label_function_of (classes p c m) ->
+        ars_sim_tail ((normal c m (sl pc) s l) :: ars) ((normal c m (sl pc) s l) :: ars').
+  
+  
+  Definition sim_p (c cg: conf) := heap_of c = heap_of cg /\
+    ars_sim_head (head (ars_of c)) (head (ars_of c)) /\
+    ars_sim_tail (ars_of c) (ars_of cg).
 
-    Notation "c1 'sim' c2 " := (sim_p c1 c2) (at level 90).
-    
-    
-    (* Work in progress. 2010-04-16. *)
-    (* See notes for a proof on paper. *)
-    Lemma pg_simulates_p_base :
-      forall `(initial_conf c0),
-        exists eg,
-          execution_of pg eg /\
-          event_trace_of p (c0 :: nil) = event_trace_of pg eg /\
-          (exists c'g, last eg c'g /\ (c0 sim c'g)).
-    Admitted.
-    Lemma pg_simulates_p_step :
-      forall c cg c',
-        c sim cg ->
-        trans p c c' ->
-        (exists eg, exists c'g, trans_star pg (cg :: eg ++ c'g :: nil) /\
-          (c' sim c'g) /\
-          event_trace_of p (c' :: nil) = event_trace_of pg (eg ++ c'g :: nil)).
-    Admitted.
-  
-  End ghost_simulation.
+  Notation "c1 'sim' c2 " := (sim_p c1 c2) (at level 90).
   
   
-  Lemma ghost_inl_preservs_obs_trace_strong :
-    forall p `(execution_of p e) contr `(ghost_inlined contr p pg),
-      exists eg, execution_of pg eg /\ event_trace_of pg eg = event_trace_of p e /\
-        (forall lc, last e lc -> exists lcg, last eg lcg /\ sim_p p pg lc lcg).
-  Proof.
-    intros.
-    destruct e using rev_ind.
-    
-    (* Base case: e = nil *)
-    exists nil.
-    split; [| split].
-    apply exec_nil.
-    reflexivity.
-    intros.
-    inversion H.
-    
-    (* Inductive step: e = e' ++ x *)
-    (* Let's figure out if we should apply "initial conf" step, or inductive step of simulation. *)
-    assert (H_tmp: e = nil \/ exists e', exists c, e = e' ++ c :: nil).
-      apply nil_or_last.
-    
-    elim H_tmp; clear H_tmp; intros; subst.
-    
-    (* e = nil  =>  initial-conf step *)
-    pose proof (pg_simulates_p_base).
-    elim (H p pg x); intros.
-    exists x0.
-    elim H0; clear H0; intros.
-    elim H1; clear H1; intros.
-    elim H2; clear H2; intros.
-    elim H2; clear H2; intros.
-    split; [| split].
-    assumption.
-    rewrite <- H1.
-    reflexivity.
-    intros.
-    exists x1.
-    split.
-    assumption.
-    apply last_app_cons in H4.
-    subst.
-    assumption.
-    inversion execution_of0.
-    apply H0.
-    auto.
-    
-    (* e = (c :: e) ++ x *)
-    elim H; clear H; intros e' H.
-    elim H; clear H; intros c H.
-    subst.
-    assert (execution_of p (e' ++ c :: nil)).
-      apply sub_execution2 with (c' := x).
-      rewrite app_ass in execution_of0.
-      assumption.
-    apply IHe in H.
-    elim H; clear H; intros.
-    elim H; clear H; intros.
-    elim H0; clear H0; intros.
-    
-    pose proof (H1 c).
-    clear H1.
-    assert (last (e' ++ c :: nil) c).
-      apply last_app.
-      apply last_base.
-    apply H2 in H1.
-    clear H2.
-    elim H1.
-    intros.
-    elim H2; clear H2; intros.
-    
-    pose proof (pg_simulates_p_step).
-    elim (H4 p pg c x1 x); clear H4.
-    intros egPref H_tmp.
-    elim H_tmp; clear H_tmp; intros c'g H_tmp.
-    elim H_tmp; clear H_tmp; intros H_trans_star H_tmp.
-    elim H_tmp; clear H_tmp; intros.
-    
-    exists (x0 ++ egPref ++ c'g :: nil).
-    split; [| split].
+  (* Work in progress. 2010-04-16. *)
+  (* See notes for a proof on paper. *)
+  Lemma pg_simulates_p_base :
+    forall `(initial_conf c0),
+      exists eg,
+        execution_of pg eg /\
+        event_trace_of p (c0 :: nil) = event_trace_of pg eg /\
+        (exists c'g, last eg c'g /\ (c0 sim c'g)).
+  Admitted.
+  Lemma pg_simulates_p_step :
+    forall c cg c',
+      c sim cg ->
+      trans p c c' ->
+      (exists eg, exists c'g, trans_star pg (cg :: eg ++ c'g :: nil) /\
+        (c' sim c'g) /\
+        event_trace_of p (c' :: nil) = event_trace_of pg (eg ++ c'g :: nil)).
+  Admitted.
 
-    apply exec_intros.
-    inversion H.
-    intros.
-    apply H6.
-    inversion H2.
-    rewrite <- H9.
-    rewrite <- H10.
-    simpl.
-    subst.
-    reflexivity.
-    rewrite <- H9.
-    rewrite <- H11.
-    simpl.
-    reflexivity.
+End GhostSimulation.
 
-    intros.
-    apply exec_impl_trans_star in H.
-    apply last_app_prefix in H2.
-    elim H2; intros.
-    subst.
-    rewrite <- list_rearrange in H6.
-    apply trans_star_seq with (e2 := egPref ++ c'g :: nil) in H; try assumption.
-    rewrite H6 in H.
-    apply trans_star_suff in H.
-    inversion H.
-    assumption.
-    assumption.
-    
-    rewrite (event_trace_distr pg x0).
-    rewrite (event_trace_distr _ (e' ++ c :: nil) (x :: nil)).
-    rewrite H5.
-    rewrite H0.
-    reflexivity.
-    
-    intros.
-    exists c'g.
-    split.
-    apply last_app; apply last_app; apply last_base.
-    
-    apply last_app_prefix in H6.
-    elim H6; intros.
-    apply app_inj_tail in H7.
-    elim H7; intros; subst.
-    assumption.
-    assumption.
-    
-    assumption.
-    inversion execution_of0.
-    apply H5 with (pref := e') (suff := nil).
-    rewrite app_ass.
-    reflexivity.
-  Qed.
+
+Lemma ghost_inl_preservs_obs_trace_strong :
+  forall p `(execution_of p e) contr `(ghost_inlined contr p pg),
+    exists eg, execution_of pg eg /\ event_trace_of pg eg = event_trace_of p e /\
+      (forall lc, last e lc -> exists lcg, last eg lcg /\ sim_p p pg lc lcg).
+Proof.
+  intros.
+  destruct e using rev_ind.
   
+  (* Base case: e = nil *)
+  exists nil.
+  split; [| split].
+  apply exec_nil.
+  reflexivity.
+  intros.
+  inversion H.
   
-  Corollary ghost_inl_preservs_obs_trace :
-    forall p `(execution_of p e) contr `(ghost_inlined contr p pg),
-      exists eg, execution_of pg eg /\ event_trace_of pg eg = event_trace_of p e.
-  Proof.
-    intros.
-    pose proof (ghost_inl_preservs_obs_trace_strong p (execution_of0) contr ghost_inlined0).
-    elim: H => x H.
-    elim: H => H H0.
-    elim: H0 => H0.
-    by exists x.
-  Qed.
+  (* Inductive step: e = e' ++ x *)
+  (* Let's figure out if we should apply "initial conf" step, or inductive step of simulation. *)
+  assert (H_tmp: e = nil \/ exists e', exists c, e = e' ++ c :: nil).
+    apply nil_or_last.
   
-  Lemma ghost_adherence_impl_actual_adherence :
-    forall p contr, (exists pg, ghost_inlined contr p pg /\ adheres_to gs pg contr) -> adheres_to gs p contr.
-  Proof.
-    intros p contr H.
-    unfold adheres_to.
-    intros.
-    elim H; clear H; intros pg H_g_inad.
-    elim H_g_inad; clear H_g_inad; intros H_g_in H_g_ad.
-    
-    assert (H_sim: exists eg, execution_of pg eg /\ event_trace_of pg eg = event_trace_of p e).
-      apply ghost_inl_preservs_obs_trace with (p := p) (e := e) (contr := contr); assumption.
-    
-    elim H_sim.
-    intros eg [H_exg H_trg].
-    apply H_g_ad in H_exg.
-    rewrite H_trg in H_exg.
+  elim H_tmp; clear H_tmp; intros; subst.
+  
+  (* e = nil  =>  initial-conf step *)
+  pose proof (pg_simulates_p_base).
+  elim (H p pg x); intros.
+  exists x0.
+  elim H0; clear H0; intros.
+  elim H1; clear H1; intros.
+  elim H2; clear H2; intros.
+  elim H2; clear H2; intros.
+  split; [| split].
+  assumption.
+  rewrite <- H1.
+  reflexivity.
+  intros.
+  exists x1.
+  split.
+  assumption.
+  apply last_app_cons in H4.
+  subst.
+  assumption.
+  inversion execution_of0.
+  apply H0.
+  auto.
+  
+  (* e = (c :: e) ++ x *)
+  elim H; clear H; intros e' H.
+  elim H; clear H; intros c H.
+  subst.
+  assert (execution_of p (e' ++ c :: nil)).
+    apply sub_execution2 with (c' := x).
+    rewrite app_ass in execution_of0.
     assumption.
-  Qed.
+  apply IHe in H.
+  elim H; clear H; intros.
+  elim H; clear H; intros.
+  elim H0; clear H0; intros.
   
+  pose proof (H1 c).
+  clear H1.
+  assert (last (e' ++ c :: nil) c).
+    apply last_app.
+    apply last_base.
+  apply H2 in H1.
+  clear H2.
+  elim H1.
+  intros.
+  elim H2; clear H2; intros.
   
-  Corollary never_wrong_impl_adherence p contr :
-    (exists pg,
-      ghost_inlined contr p pg /\
-      forall `(execution_of pg gexec), exec_never_goes_wrong gs gexec) ->
-      adheres_to gs p contr.
-  Proof.
-    intros.
-    elim H; intros pg H_gadh.
-    elim H_gadh; intros.
-    apply ghost_adherence_impl_actual_adherence.
-    exists pg.
-    split.
-    assumption.
-    apply never_wrong_impl_ghost_adherence with (p := p) (pg := pg).
-    assumption.
-    intros.
-    apply H1.
-    assumption.
-  Qed.
+  pose proof (pg_simulates_p_step).
+  elim (H4 p pg c x1 x); clear H4.
+  intros egPref H_tmp.
+  elim H_tmp; clear H_tmp; intros c'g H_tmp.
+  elim H_tmp; clear H_tmp; intros H_trans_star H_tmp.
+  elim H_tmp; clear H_tmp; intros.
   
+  exists (x0 ++ egPref ++ c'g :: nil).
+  split; [| split].
+
+  apply exec_intros.
+  inversion H.
+  intros.
+  apply H6.
+  inversion H2.
+  rewrite <- H9.
+  rewrite <- H10.
+  simpl.
+  subst.
+  reflexivity.
+  rewrite <- H9.
+  rewrite <- H11.
+  simpl.
+  reflexivity.
+
+  intros.
+  apply exec_impl_trans_star in H.
+  apply last_app_prefix in H2.
+  elim H2; intros.
+  subst.
+  rewrite <- list_rearrange in H6.
+  apply trans_star_seq with (e2 := egPref ++ c'g :: nil) in H; try assumption.
+  rewrite H6 in H.
+  apply trans_star_suff in H.
+  inversion H.
+  assumption.
+
   
-  Definition stronger_ast a a' := forall c, ∥ a ∥ c -> ∥ a' ∥ c.
+  rewrite (event_trace_distr pg x0).
+  rewrite (event_trace_distr _ (e' ++ c :: nil) (x :: nil)).
+  rewrite H5.
+  rewrite H0.
+  reflexivity.
+  
+  intros.
+  exists c'g.
+  split.
+  apply last_app; apply last_app; apply last_base.
+  
+  apply last_app_prefix in H6.
+  elim H6; intros.
+  apply app_inj_tail in H7.
+  elim H7; intros; subst.
+  assumption.
+  
+  assumption.
+  inversion execution_of0.
+  apply H5 with (pref := e') (suff := nil).
+  rewrite app_ass.
+  reflexivity.
+Qed.
+
+
+Corollary ghost_inl_preservs_obs_trace :
+  forall p `(execution_of p e) contr `(ghost_inlined contr p pg),
+    exists eg, execution_of pg eg /\ event_trace_of pg eg = event_trace_of p e.
+Proof.
+  intros.
+  pose proof (ghost_inl_preservs_obs_trace_strong p (execution_of0) contr ghost_inlined0).
+  elim: H => x H.
+  elim: H => H H0.
+  elim: H0 => H0.
+  by exists x.
+Qed.
+
+Lemma ghost_adherence_impl_actual_adherence :
+  forall p contr, (exists pg, ghost_inlined contr p pg /\ adheres_to gs pg contr) -> adheres_to gs p contr.
+Proof.
+  intros p contr H.
+  unfold adheres_to.
+  intros.
+  elim H; clear H; intros pg H_g_inad.
+  elim H_g_inad; clear H_g_inad; intros H_g_in H_g_ad.
+  
+  assert (H_sim: exists eg, execution_of pg eg /\ event_trace_of pg eg = event_trace_of p e).
+    apply ghost_inl_preservs_obs_trace with (p := p) (e := e) (contr := contr); assumption.
+  
+  elim H_sim.
+  intros eg [H_exg H_trg].
+  apply H_g_ad in H_exg.
+  rewrite H_trg in H_exg.
+  assumption.
+Qed.
+
+
+Corollary never_wrong_impl_adherence p contr :
+  (exists pg,
+    ghost_inlined contr p pg /\
+    forall `(execution_of pg gexec), exec_never_goes_wrong gs gexec) ->
+    adheres_to gs p contr.
+Proof.
+  intros.
+  elim H; intros pg H_gadh.
+  elim H_gadh; intros.
+  apply ghost_adherence_impl_actual_adherence.
+  exists pg.
+  split.
+  assumption.
+  apply never_wrong_impl_ghost_adherence with (p := p) (pg := pg).
+  assumption.
+  intros.
+  apply H1.
+  assumption.
+Qed.
+
+
+Definition stronger_ast a a' := forall c, ∥ a ∥ c -> ∥ a' ∥ c.
   
 
 Lemma ghostid_neq_false : forall g1 g2 : ghostid, g1 <> g2 -> beq_nat g1 g2 = false.
@@ -2072,5 +2070,5 @@ Qed.
       assumption.
     Qed.
   
-End contracts.
+End Contracts.
 
