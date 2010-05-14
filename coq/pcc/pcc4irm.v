@@ -166,7 +166,7 @@ Qed.
 
 Corollary last_trans : forall `(execution_of p (e ++ c' :: nil)) `(last e c), trans p c c'.
 intros.
-apply last_app_prefix in last0; try assumption.
+apply last_app_prefix in last0.
 elim last0; intros.
 subst.
 rewrite <- list_rearrange in execution_of0.
@@ -174,7 +174,7 @@ apply (last_trans_app execution_of0).
 Qed.
 
 
-Lemma non_ghost_instr_preservs_gv :
+Lemma non_ghost_instr_preservs_gv : 
   forall `(trans p (gv, h, ar :: ars) (gv', h', ars')),
     (forall gu, current_instr p (gv, h, ar :: ars) <> Some (ghost_instr gu)) -> gv = gv'.
 intros.
@@ -188,7 +188,7 @@ elim H1; reflexivity.
 Qed.
 
 
-(* To do; Find out if we're better of with ss_after as a fixpoint. *)
+(* To do; Find out if we're better off with ss_after as a fixpoint. *)
 Lemma ss_after_total : forall ssus ss, exists ss'', ss_after ss ssus ss''.
 induction ssus.
 intros.
@@ -2005,70 +2005,70 @@ assumption.
 Qed.
   
   
-  Definition prog_annotations := classid -> methid -> label -> ast.
-  
-  
-  Definition annotated_with p annos : Prop :=
-    forall c m l, annotations_of (classes p c m) l = annos c m l.
+Definition prog_annotations := classid -> methid -> label -> ast.
 
 
-  (* For a given p, contr: annos is a proof outline if
-       there exists a ghost inlined version pg,
-         which is annotated with annos, and locally valid
-         such that
-           forall labels, l, pointing at a ghost-update
-           the successor label l'
-           should be annotated with [gs = e] where e is a non-ghost expression *)
-  Definition is_proof_outline (p: program) (contr: contract) (annos : prog_annotations) :=
-    exists pg,
-      ghost_inlined contr p pg /\
-      annotated_with pg annos /\
-      locally_valid pg /\
-      forall c m l l' gu,
-        instr_at pg c m l = ghost_instr gu ->
-        label_function_of (classes pg c m) l = l' ->
-        exists e, annos c m l' = (eq (ghost_var gs) e) /\ ~ghost_expr e.
-  
-  
-  Theorem proof_outline_existence_impl_adherence :
-    forall p contr,
-      (exists annos, is_proof_outline p contr annos) ->
-      adheres_to gs p contr.
-    Proof.
-      intros.
-      elim H; intros annos H_po.
-      unfold is_proof_outline in H_po.
-      elim H_po => pg H0.
-      elim: H0 => H_gi H0.
-      elim: H0 => H_annotated H0.
-      elim: H0 => H_lvpg H0.
-      apply never_wrong_impl_adherence.
-      exists pg.
-      split.
-      assumption.
-      intros.
-      apply sufficient_never_go_wrong_annos with (pg := pg).
-      assumption.
-      intros.
-      subst.
-      elim (H0 c m l (label_function_of (classes pg c m) l) gu); intros.
-      elim H2; intros.
-      unfold annotated_with in H_annotated.
-      pose proof (H_annotated c m (label_function_of (classes pg c m) l)).
-      rewrite H5.
-      pose proof (H0 c m l (label_function_of (classes pg c m) l)).
-      pose proof (H6 gu).
-      apply H7 in H1.
-      elim H1; intros e H'.
-      elim H'; intros.
-      rewrite H8.
-      apply (non_ghost_stronger_than_non_err e).
-      assumption.
-      reflexivity.
-      assumption.
-      reflexivity.
-      assumption.
-    Qed.
+Definition annotated_with p annos : Prop :=
+  forall c m l, annotations_of (classes p c m) l = annos c m l.
+
+
+(* For a given p, contr: annos is a proof outline if
+     there exists a ghost inlined version pg,
+       which is annotated with annos, and locally valid
+       such that
+         forall labels, l, pointing at a ghost-update
+         the successor label l'
+         should be annotated with [gs = e] where e is a non-ghost expression *)
+Definition is_proof_outline (p: program) (contr: contract) (annos : prog_annotations) :=
+  exists pg,
+    ghost_inlined contr p pg /\
+    annotated_with pg annos /\
+    locally_valid pg /\
+    forall c m l l' gu,
+      instr_at pg c m l = ghost_instr gu ->
+      label_function_of (classes pg c m) l = l' ->
+      exists e, annos c m l' = (eq (ghost_var gs) e) /\ ~ghost_expr e.
+
+
+Theorem proof_outline_existence_impl_adherence :
+  forall p contr,
+    (exists annos, is_proof_outline p contr annos) ->
+    adheres_to gs p contr.
+  Proof.
+    intros.
+    elim H; intros annos H_po.
+    unfold is_proof_outline in H_po.
+    elim H_po => pg H0.
+    elim: H0 => H_gi H0.
+    elim: H0 => H_annotated H0.
+    elim: H0 => H_lvpg H0.
+    apply never_wrong_impl_adherence.
+    exists pg.
+    split.
+    assumption.
+    intros.
+    apply sufficient_never_go_wrong_annos with (pg := pg).
+    assumption.
+    intros.
+    subst.
+    elim (H0 c m l (label_function_of (classes pg c m) l) gu); intros.
+    elim H2; intros.
+    unfold annotated_with in H_annotated.
+    pose proof (H_annotated c m (label_function_of (classes pg c m) l)).
+    rewrite H5.
+    pose proof (H0 c m l (label_function_of (classes pg c m) l)).
+    pose proof (H6 gu).
+    apply H7 in H1.
+    elim H1; intros e H'.
+    elim H'; intros.
+    rewrite H8.
+    apply (non_ghost_stronger_than_non_err e).
+    assumption.
+    reflexivity.
+    assumption.
+    reflexivity.
+    assumption.
+  Qed.
   
 End Contracts.
 
