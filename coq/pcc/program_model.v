@@ -431,29 +431,13 @@ Lemma exec_impl_trans_star : forall p `(execution_of p e), trans_star p e.
 Proof.
 move => p e H_exec.
 inversion H_exec as [e' H_init H_suff H_eq].
-clear H_exec.
-move: e H_init H_suff H_eq. 
-elim => [H_init H_suff H_eq|c]; first by apply tr_star_nil.
-case => [|c' l] H_init H_suff H_eq H; first by apply tr_star_sing.
-apply tr_star_step; first by apply H_eq with (pref := nil) (suff := l).
-apply H_init.
-Focus 2.
-- move => pref c0 c1 suffx H_eq_suffx.
-  apply H_eq with (pref := c :: pref) (suff := suffx).
-  by rewrite H_eq_suffx.
-Focus 2.
-- 
-F
-
-
-- move => c0 H_head.
-  apply (H_suff c0).
-  simpl.
-  simpl in H_head.
-  apply H0 with (pref := a :: pref) (suff := suff).
-  rewrite <- app_comm_cons.
-  rewrite H.
-  reflexivity.
+move: e H_suff {H_exec H_init H_eq e'}. 
+elim => [H_suff|c]; first by apply tr_star_nil.
+case => [|c' l] H_suff H_pref; first by apply tr_star_sing.
+apply tr_star_step; first by apply (H_pref nil c c' l). 
+apply H_suff => pref c0 c1 suffx H_eq.
+apply H_pref with (pref := c :: pref) (suff := suffx).
+by rewrite H_eq.
 Qed.
 
 Definition complete_execution_of p ex : Prop :=
