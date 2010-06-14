@@ -45,7 +45,6 @@ Definition eh_table := list eh_record.
 *)
 Definition label_function := label -> label.
 
-
 (* 
    We're skipping the regular method definition and jump straight to the
    extended version which includes assertions. 
