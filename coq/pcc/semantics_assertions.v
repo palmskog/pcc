@@ -1,49 +1,217 @@
-
 Require Export program_model.
+Require Import ssreflect.
 
-Section semantics_assertions.
+Section SemanticsAssertions.
   
-  Lemma int_or_other : forall v, is_intval v \/ ~is_intval v.
-  Proof.
-    intro.
-    case v.
-    intro; case j; try (intros; right; unfold is_intval; intro; elim H; intros; discriminate).
-    left; exists z; reflexivity.
-    right.
-    intro.
-    inversion H.
-    discriminate.
-  Qed.
+Lemma int_or_other : forall v, is_intval v \/ ~is_intval v.
+Proof.
+case; last by right => H_int; inversion H_int.
+case; try (intros; right; unfold is_intval; intro; elim H; intros; discriminate).
+by move => z; left; exists z.
+Qed.
 
-  
-  Lemma complete_geeval : forall e gv, exists v, g_eeval e gv v.
-    intros.
-    destruct e.
-    exists v; apply ge_val.
-    exists (gv g); apply ge_gv.
-    exists undefval; apply ge_nsfield.
-    exists undefval; apply ge_sfield.
-    exists undefval; apply ge_stackexp.
-    exists undefval; apply ge_local.
-    exists undefval; apply ge_plus.
-    exists undefval; apply ge_guarded.
-  Qed.
-
+Lemma complete_geeval : forall e gv, exists v, g_eeval e gv v.
+Proof.
+case => [v gv|g gv|e f gv| c f gv| n gv| n gv|e e' gv|e e' e0 gv].
+- by exists v; apply ge_val.
+- by exists (gv g); apply ge_gv.
+- by exists undefval; apply ge_nsfield.
+- by exists undefval; apply ge_sfield.
+- by exists undefval; apply ge_stackexp.
+- by exists undefval; apply ge_local.
+- by exists undefval; apply ge_plus.
+- by exists undefval; apply ge_guarded.
+Qed.
 
 Set Printing Coercions.
+
 Lemma deterministic_geeval : forall `(g_eeval e c v1) `(g_eeval e c v2), v1 = v2.
-intros.
-inversion g_eeval0; inversion g_eeval1; subst; try (inversion g_eeval1; discriminate); try reflexivity.
-inversion H2.
-reflexivity.
-inversion g_eeval0; inversion g_eeval1.
-subst.
-reflexivity.
+Proof.
+move => e c v1 H_geeval1 v2 H_geeval2.
+inversion H_geeval1; inversion H_geeval2; subst; rewrite //; first by injection H2.
+by inversion H_geeval1; inversion H_geeval2.
 Qed.
 
 Lemma complete_eeval : forall e c, normal_conf c -> exists v, eeval e c v.
+Proof.
+elim => [|g c H_norm|e IH f c H_norm|c f c0|n c|||].
+- case => [j c H_norm|c H_norm].
+  * by exists j; apply e_val.
+  * by exists ghost_errval; apply e_ghosterr.
+- inversion H_norm; subst.
+  by exists (gv g); apply e_ghostvar.
+- elim (IH c H_norm).
+  case.
+  * case => [z|b|l H|].
+    - by exists undefval; apply e_nsfield_err1 with (v := intval z).
+    - by exists undefval; apply e_nsfield_err1 with (v := boolval b).
+    - inversion H; subst.
+      + elim (IH c H_norm) => x H_eeval.
+        have H1: ((exists l, x = refval l) \/ (forall l, x <> refval l)) by admit.
+        elim H1; intros.
+        elim H0; intros.
+        
+  *
 
+  
+
+
+
+  inversion H; subst.
+  elim IHe; intros.
+
+  assert ((exists l, x = refval l) \/ (forall l, x <> refval l)).
+    destruct x.
+    destruct j.
+    right; intros; intro; discriminate.
+    right; intros; intro; discriminate.
+    left; exists l0; reflexivity.
+    right; intros; intro; discriminate.
+    right; intros; intro; discriminate.
+  
+  elim H1; intros.
+elim H2; intros.
+destruct h as (dh, sh).
+
+assert (dh x0 = None \/ exists obj, dh x0 = Some obj).
+  destruct (dh x0).
+  right; exists o; reflexivity.
+  left; reflexivity.
+
+elim H5; intros.
+exists undefval.
+apply e_nsfield_err2 with (gv := gv) (dh := dh) (sh := sh) (ars := normal c0 m pc s ls :: ars) (l := x0).
+reflexivity.
+rewrite <- H4; assumption.
+assumption.
+
+elim H6; intros obj.
+exists (obj f).
+apply e_nsfield with (gv := gv) (dh := dh) (sh := sh) (ars := normal c0 m pc s ls :: ars) (l := x0).
+reflexivity.
+rewrite <- H4; assumption.
+assumption.
+
+exists undefval.
+apply e_nsfield_err1 with (v := x).
+assumption.
+assumption.
+
+exists undefval.
+apply e_nsfield_err1 with (v := undefval).
+assumption.
+intros.
+intro; discriminate.
+
+exists undefval.
+apply e_nsfield_err1 with (v := ghost_errval).
+assumption.
+intros.
+intro; discriminate.
+
+(* sfield *)
+inversion H; intros.
+destruct h as (dh, sh).
+assert ((sh c0) f = None \/ exists v, (sh c0) f = Some v).
+  destruct (sh c0).
+  right; exists j; reflexivity.
+  left; reflexivity.
+elim H1; intros.
+exists undefval.
+apply e_sfield_err with (gv := gv) (dh := dh) (sh := sh) (ars := normal c1 m pc s ls :: ars).
+reflexivity.
+assumption.
+elim H2; intros.
+exists x.
+apply e_sfield with (gv := gv) (dh := dh) (sh := sh) (ars := normal c1 m pc s ls :: ars).
+reflexivity.
+assumption.
+
+(* stackexp *)
+inversion H; subst.
+exists (s[[n]]).
+apply e_stack.
+reflexivity.
+
+(* local n *)
+inversion H; subst.
+exists (ls n).
+apply e_local.
+reflexivity.
+
+(* plus *)
+elim IHe1; intros.
+assert (is_intval x \/ ~is_intval x).
+  apply int_or_other.
+elim H1; intros.
+
+elim IHe2; intros.
+assert (is_intval x0 \/ ~is_intval x0).
+  apply int_or_other.
+elim H4; intros.
+inversion H2; inversion H5; subst.
+exists (intval (x1 + x2)).
+apply e_plus.
+assumption.
+assumption.
+
+exists undefval.
+apply e_plus_err with (v1 := x) (v2 := x0).
+assumption.
+assumption.
+right; assumption.
+
+exists undefval.
+elim IHe2; intros.
+apply e_plus_err with (v1 := x) (v2 := x0).
+assumption.
+assumption.
+left; assumption.
+
+(* guarded *)
+elim IHe1; elim IHe2; elim IHe3; intros.
+assert (forall v, (exists b, v = boolval b) \/ forall b, v <> boolval b).
   intros.
+  destruct v.
+  right; intros; discriminate.
+  left; exists b; reflexivity.
+  right; intros; discriminate.
+  right; intros; discriminate.
+destruct x1.
+elim (H3 j); intros.
+elim H4; intros.
+destruct x1.
+exists x0.
+apply e_guard_true.
+rewrite H5 in H2.
+assumption.
+assumption.
+exists x.
+apply e_guard_other.
+rewrite H5 in H2.
+assumption.
+assumption.
+Set Printing Coercions.
+exists undefval.
+apply e_guard_err with (v := jval j).
+assumption.
+intro.
+intro.
+inversion H5.
+contradict H7.
+apply H4.
+
+exists undefval.
+apply e_guard_err with (v := ghost_errval).
+assumption.
+intros.
+discriminate.
+Qed.
+
+
+(*
+
+ intros.
   induction e.
 
   destruct v.
@@ -57,7 +225,8 @@ Lemma complete_eeval : forall e c, normal_conf c -> exists v, eeval e c v.
   apply e_ghosterr.
   
   (* ghost var *)
-  inversion H; subst.
+   inversion H; subst.
+
   exists (gv g).
   apply e_ghostvar.
 
@@ -218,7 +387,8 @@ apply e_guard_err with (v := ghost_errval).
 assumption.
 intros.
 discriminate.
-Qed.
+*)
+
 
   Open Scope Z_scope.
 
