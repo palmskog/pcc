@@ -291,7 +291,6 @@ inversion execution0; subst.
 right; right; right; right.
 split.
 reflexivity.
-move: H => [H | [ H | ]].
 move: H => [H | [ H | [ H | [H | H]]]]; try by (elim: H => n H; elim: H).
 elim: H => H_eq H.
 rewrite b_updates_comp; rewrite a_updates_comp.
@@ -467,7 +466,7 @@ elim: H => H. elim H; clear H; intros n' H; elim H; clear H; intros H_disc; disc
 elim H; clear H; intros H; discriminate.
 Qed.
 
-  Lemma list_neq_length (A: Set) : forall l l': list A, length l <> length l' -> l <> l'.
+  Lemma list_neq_length_alt (A: Set) : forall l l': list A, length l <> length l' -> l <> l'.
     intros.
     contradict H.
     subst.
