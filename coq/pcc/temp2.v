@@ -291,6 +291,7 @@ inversion execution0; subst.
 right; right; right; right.
 split.
 reflexivity.
+move: H => [H | [ H | ]].
 move: H => [H | [ H | [ H | [H | H]]]]; try by (elim: H => n H; elim: H).
 elim: H => H_eq H.
 rewrite b_updates_comp; rewrite a_updates_comp.

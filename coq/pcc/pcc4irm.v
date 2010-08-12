@@ -390,10 +390,9 @@ Admitted.
 
 
 Lemma aftssu_followed_by_aftgu :
-  forall contr `(execution_of p e) `(In c e),
-    (exists cid, exists mid, after_ssu_conf p c cid mid) ->
+  forall contr `(execution_of p e) `(In c e) `(after_ssu_conf p c cid mid),
     forall c', (exists prefx, exists suffx, e = prefx ++ c :: c' :: suffx) ->
-      exists cid, exists mid, after_gu_conf contr p c' cid mid.
+      after_gu_conf contr p c' cid mid.
 Admitted.
 
 
@@ -612,14 +611,14 @@ Proof.
    * admit.
    (* H_aftssu H_befgus' *)
    * have H_in : In c (e ++ c :: c' :: nil) by auto with datatypes.
-     pose proof (aftssu_followed_by_aftgu contr H_exec H_in) as H_constr.
-     have H_ex : exists cid : classid, exists mid : methid, after_ssu_conf pg c cid mid by exists cid; exists mid.
-     apply H_constr with (c'0 := c') in H_ex; last by exists e; exists nil.
-     move: H_ex => [ cid'' [ mid''] ] H_ex.
-     rewrite /after_gu_conf in H_ex.
+     pose proof (aftssu_followed_by_aftgu contr H_exec H_in H_aftssu c') as H_constr.
+     have H_ex : exists prefx : list conf, exists suffx : list conf, e ++ c :: c' :: nil = prefx ++ c :: c' :: suffx by exists e; exists nil.
+     apply H_constr in H_ex.
+     rename H_ex into H_aftgu'.
+     rewrite /after_gu_conf in H_aftgu'.
      rewrite /before_gu_conf in H_befgus'.
-     rewrite H_ex in H_befgus'.
-     injection H_befgus' => H_diff {H_befgus' H_ex}.
+     rewrite H_aftgu' in H_befgus'.
+     injection H_befgus' => H_eq {H_befgus' H_aftgu'}.
      admit.     
    (* H_aftssu H_befssu' *)
    * have H_in : In c (e ++ c :: c' :: nil) by auto with datatypes.
