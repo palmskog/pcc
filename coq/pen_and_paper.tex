@@ -1,0 +1,673 @@
+\documentclass[a4paper,11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=1cm]{geometry}
+\usepackage{amsthm}
+%\usepackage{fullpage}
+
+\newtheorem{definition}{Definition}
+\newtheorem{lemma}{Lemma}
+\newtheorem{theorem}{Theorem}
+\newtheorem{notation}{Notation}
+
+\newcommand{\Inv}{\mathit{Inv}}
+\newcommand{\app}{\mathit{\,++\,}}
+\newcommand{\Default}{\mathit{Default}}
+\newcommand{\pc}{\mathit{pc}}
+\newcommand{\ex}{\mathit{ex}}
+\newcommand{\ar}{\mathit{ar}}
+\newcommand{\WP}{\mathit{WP}}
+
+\newcommand{\sect}[1]{\noindent\parbox{\textwidth}{#1}}
+\newcommand{\sep}{\hspace{-1.5707965cm}\rule{\paperwidth}{1pt}}
+
+\newcommand{\UNSHIFT}{\mathit{unshift}}
+\newcommand{\SHIFT}{\mathit{shift}}
+\newcommand{\Dom}{\mathit{Dom}}
+\newcommand{\SELECT}{\mbox{SELECT}}
+\newcommand{\Stack}{\mathrm{s}}
+\newcommand{\TRUE}{\mathit{tt}}
+\newcommand{\FALSE}{\mathit{ff}}
+\newcommand{\IF}{\mathrm{IF}}
+\newcommand{\ghost}[1]{{\it #1}^g}
+\newcommand{\LockSet}{\mathsf{Lck}}
+
+\begin{document}
+\pagestyle{empty}
+
+\sep
+
+\begin{notation}[$\Inv$]
+$\Inv$ will from now on denote the visible state invariant of the program in question.
+\end{notation}
+
+
+\sep
+
+
+\begin{notation}[$\Default$]
+$\Default$ denotes an assertion specifying that all variables have their default values. ($\Default$ is true at the initial configuration.)
+\end{notation}
+
+
+\sep
+
+
+\begin{definition}[Calling / Returning / Visible Configuration]
+~\\[-5mm]
+\begin{itemize}
+\item A configuration $C=(h, (c, m, \pc, s, l)::R)$ is \emph{calling} if $C \rightarrow C'$ for some $C' = (h', (c', m', \pc', s', l')::(h, (c, m, \pc, s, l))::R)$.
+\item A configuration $C=(h, a::R)$ is \emph{returning} if $C \rightarrow (h', R)$.
+  
+  (Returning normally / exceptionally depending on shape of $a$ but I currently don't think it ever matters.)
+  
+%\item A configuration $C=(h, (o)::R)$ is \emph{returning exceptionally} if $C \rightarrow C'$ for some $C' = (h', R)$.
+\item A configuration is \emph{visible} if it is calling or returning.
+\end{itemize}
+\end{definition}
+
+
+\sep
+
+
+\begin{definition}[Annotated Method / Program]
+An \emph{annotated method} is an ordinary method with an assertion attached to each instruction.
+
+An \emph{annotated program} is an ordinary program (whose methods are annotated) together with an $\Inv$.
+\end{definition}
+
+
+\sep
+
+
+\begin{definition}[$\WP$]\label{def:wp}
+See figure \ref{fig:wp}. Note that the figure suggests that any instruction may have an exceptional outcome. I think that this this would be quite heavy in the proofs and that we (at least in this formalization) should restrict it to {\tt athrow} and {\tt invoke}.
+\begin{figure}
+\[ \WP_M(L) = \WP_M^N(L) \land \WP_M^E(L) \quad\mbox{where~}M = (I, H, A)\]
+
+\[
+\begin{array}{ll}
+\hline
+I_L & \WP_M^N(L) \\ \hline
+\mbox{\tt aload}\ n        & \UNSHIFT(A_{L+1}[l_n/\Stack_0]) \\[1pt]
+\mbox{\tt astore}\ n       & (\SHIFT(A_{L+1}))\wedge \Stack_0 = l_n \\[1pt]
+\mbox{\tt athrow}          & \TRUE \\[1pt]
+\mbox{\tt goto}\ L'        & A_{L'}  \\[1pt]
+\mbox{\tt if\_icmpeq}~L'   & \IF(\Stack_0=\Stack_1,\SHIFT^2(A_{L'}),\SHIFT^2(A_{L+1}))\\[1pt]
+\mbox{\tt ifeq}\ L'        & \IF(\Stack_0=0,\SHIFT(A_{L'}), \SHIFT(A_{L+1})) \\[1pt]
+\mbox{\tt getstatic}\ c.f  & \left\{\begin{array}{@{}l}
+                                    c' \in \LockSet \land \UNSHIFT (A_{L+1}[c.f/\Stack_0]) \textrm{if $\Gamma_\mathrm{L}(c') = (F,a)$ and $(c.f) \in F$}\\
+                                    \forall x. \UNSHIFT(A_{L+1}[x/\Stack_0]) \ \ \ \mbox{otherwise}
+                                    \end{array}\right.\\[1pt]
+\mbox{\tt putstatic}\ c.f  & \left\{\begin{array}{@{}l}
+                                    c' \in \LockSet \land \SHIFT(A_{L+1})[\Stack_0/c.f] \textrm{if $\Gamma_\mathrm{L}(c') = (F,a)$ and $(c.f) \in F$}\\
+                                    \SHIFT(A_{L+1})[\Stack_0/c.f] \ \ \ \mbox{otherwise}
+                                    \end{array}\right.\\[1pt]
+\mbox{\tt ldc}\ v          & \UNSHIFT(A_{L+1}[v/\Stack_0]) \\[1pt]
+\mbox{\tt ldc\ c}          & \left\{\begin{array}{@{}l}
+                                    \FALSE \ \ \ \ \textrm{if $c \in \Dom(\Gamma_L) \land I_{L+1} \neq \mbox{\tt monitor*}$}\\
+                                    \UNSHIFT(A_{L+1}[c/\Stack_0]) \ \ \ \ \textrm{otherwise}
+                                    \end{array}\right.\\[1pt]
+\mbox{\tt monitorenter}    & \left\{\begin{array}{@{}l}
+                                    \lnot(s_0 \in \LockSet)\> \land \forall\mathbf{x}.(a \Rightarrow \SHIFT(A_{L+1})[\LockSet\cup\{s_0\}/\LockSet])[\mathbf{x}/F] \\
+                                    \hspace*{1cm}\textrm{if $I_{L-1} = \mbox{\tt LDC\ $c$}$ and $(c, (F, a)) \in \Gamma_L$}\\
+                                    \SHIFT(A_{L+1})[\LockSet \cup \{s_0\}/\LockSet] \ \ \ \textrm{otherwise}
+                                    \end{array}\right.\\[1pt]
+\mbox{\tt monitorexit}     & \left\{\begin{array}{@{}l}
+                                    a \land (\forall \mathbf{x}. \SHIFT(A_{L+1})[\mathbf{x}/F][\LockSet\!\setminus\!\{s_0\}/\LockSet]) \\ 
+                                    \hspace*{1cm} \textrm{if $I_{L-1} = \mbox{\tt LDC\ $c$}$ and $(c, (F, a)) \in \Gamma_L$}\\
+                                    A_{L+1}[\LockSet \setminus\{s_0\}/\LockSet] \ \ \  \textrm{otherwise}
+                                    \end{array}\right.\\[1pt]
+\begin{array}{@{}l@{}}
+\mbox{\tt invoke-} \\
+\mbox{\tt virtual}\ c.m
+\end{array}                & \left\{\begin{array}{@{}ll}
+                                    A_{L+1} & \mbox{if $c.m$ is a non-client-reentrant API method} \\
+                                    Inv    & \textrm{if for each successor label $L'$, $A_{L'} = Inv$} \\
+                                    \FALSE & \mbox{otherwise}
+                                    \end{array}\right.\\[1pt]
+\multicolumn{2}{l}{\mbox{\tt invokestatic System.exit}\quad \TRUE}\\[1pt]
+
+\multicolumn{2}{l}{\langle \ghost{\bf x} := a_1 \rightarrow {\bf e}_1 \mid \ldots \mid a_n \rightarrow {\bf e}_n \rangle} \\
+ & \begin{array}{@{}l@{}l@{}}\SELECT(&\langle a_1, \ldots, a_n\rangle,\\ & \langle A_{L+1}
+[{\bf e}_1/\ghost{{\bf x}}], \ldots, A_{L+1}[{\bf e}_n/\ghost{{\bf x}}]\rangle,\FALSE)\end{array} \\ 
+
+\textrm{other}             & \left\{\begin{array}{@{}ll}
+                                    Inv   & \textrm{if for each successor label $L'$, $A_{L'} = Inv$} \\
+                                    \FALSE & \mbox{otherwise}
+                                    \end{array}\right. \\ \hline
+\end{array}
+\]
+
+
+
+
+
+\[
+\begin{array}{l@{~=~}l}
+\WP_M^E(L) & \WP_M^E(L, H) \\
+\WP_M^E(L, \epsilon) & Inv \\
+\WP_M^E(L, (b, e, L', \mathit{Throwable}) :: H') & A_{L'} \quad \mbox{if $b \leq L < e$} \\
+\WP_M^E(L, (b, e, L', c) :: H') & A_{L'} \land \WP_M^E(L, H')
+\end{array}
+\]
+
+\caption{\label{fig:wp} Specification of the $\WP_M$ function}
+\end{figure}
+\end{definition}
+
+
+\sep
+
+
+\begin{definition}[Valid Execution]
+An execution $E = C_0C_1\ldots$ of an annotated program is \emph{valid} if for each $i: 0 \leq i~(\leq |E|)$ the following hold
+\begin{itemize}
+\item If $C_i$ is visible (calling or returning), then $\Inv$ holds.
+\item If $C_i$ is of the form $(h, (c, m, \pc, s, l)::R)$, then $\| A_{\pc} \| C_i$ holds.
+\end{itemize}
+where $A$ denotes the array of assertions in method $c.m$.
+\end{definition}
+
+
+\sep
+
+
+\begin{definition}[Global Validity]
+A program $P$ is \emph{globally valid} if all possible executions of $P$ are valid.
+\end{definition}
+
+
+\sep
+
+
+\sect{\begin{definition}[Local Validity (Method)]\label{def:local_validity_method}
+An annotated method $M = (I, H, A)$ is \emph{locally valid} if
+\begin{enumerate}
+\item $\Inv \Rightarrow A_0$
+\item $A_L \Rightarrow \WP_M(L)$ for $L$ s.t. $0 \leq L \le |I|$
+\end{enumerate}
+
+\noindent\framebox[\linewidth]{\parbox{\linewidth}{Important note 1 (which we might have overlooked in original defs): The assertion at an execption handle target label may not mention anything but $\Inv$ that depends on the heap, since $\Inv$ is the only guarantee we can fulfill about the heap after having made a call to another method.}}
+
+\noindent\framebox[\linewidth]{\parbox{\linewidth}{Important note 2 (which we definately overlooked in original defs): The assertion at an execption handle target label may not mention the stack since JLS }}
+\end{definition}
+}
+
+
+\sep
+
+
+\begin{definition}[Local Validity (Program)]\label{def:local_validity_program}
+An annotated program is locally valid if
+\begin{enumerate}
+\item All its methods are locally valid
+\item $\Default \Rightarrow Inv$
+\end{enumerate}
+\end{definition}
+
+
+\sep
+
+
+\begin{lemma}[Invoke Only Caller]\label{lem:invoke_only_caller}
+If a configuration $(h, (c, m, \pc, s, l)::R)$ is calling, then the instruction at $\pc$ in $c.m$ is an invoke instruction.
+\end{lemma}
+\begin{proof} By case analysis of the possible transitions. {\bf (Partly formalized. Huge proof.)}\end{proof}
+
+
+\sep
+
+\newpage
+
+\begin{lemma}[$\WP$ correct (normal)]\label{lem:wp_correct_normal}
+Let $C = (h, (c, m, \pc, s, l)::R)$ and $C' = (h', (c', m', \pc', s', l')::R')$.\\
+If $C \rightarrow C'$, then $\| \WP_{c.m}(\pc) \| C \Leftrightarrow \| A_{\pc'} \| C'$.
+\end{lemma}
+
+\begin{proof}
+Case analysis on the instruction at $c.m[pc]$.
+
+\begin{itemize}
+\item {\tt aload} $n$:
+  We know that
+  \begin{itemize}
+  \item $C' = (h, (c, m, \pc+1, l(n) :: s, l)::R)$
+  \item $\WP_{c.m}(\pc) = \UNSHIFT(A_{\pc+1}[l_n/\Stack_0])$
+  \end{itemize}
+  
+  Left to show: $ \| \UNSHIFT(A_{\pc+1}[l_n/\Stack_0]) \| C \Leftrightarrow \| A_{\pc+1} \| C' $
+  
+  Proceeding with structural induction on $A_{\pc+1}$.
+  
+  \begin{itemize}
+  \item $\TRUE$: Applying substitution and $\UNSHIFT$ yields $\|\TRUE\|C \Leftrightarrow \| \TRUE \| C'$, which equals $\TRUE \Leftrightarrow \TRUE$.
+  \item $\FALSE$: Applying substitution and $\UNSHIFT$ yields $\|\FALSE\|C \Leftrightarrow \| \FALSE \| C'$, which equals $\FALSE \Leftrightarrow \FALSE$.
+  \item $A_1 \land A_2$:
+    \begin{enumerate}
+    \item IH$_1$: $ \| \UNSHIFT(A_1[l_n/\Stack_0]) \| C \Leftrightarrow \| A_1 \| C'$
+    \item IH$_2$: $ \| \UNSHIFT(A_2[l_n/\Stack_0]) \| C \Leftrightarrow \| A_2 \| C'$
+    \item Applying substitution yields $\| \UNSHIFT(A_1[l_n/\Stack_0] \land A_2[l_n/\Stack_0]) \| C \Leftrightarrow \| A_1 \land A_2 \| C'$
+    \item Applying $\UNSHIFT$ yields $\| \UNSHIFT(A_1[l_n/\Stack_0]) \land \UNSHIFT(A_2[l_n/\Stack_0]) \| C \Leftrightarrow \| A_1 \land A_2 \| C'$
+    \item Which equals $ \| \UNSHIFT(A_1[l_n/\Stack_0]) \| C$ and $\| \UNSHIFT(A_2[l_n/\Stack_0]) \| C \Leftrightarrow \| A_1 \land A_2 \| C'$
+    \item By IH$_1$ and IH$_2$, we know $ \| A_1 \| C'$ and $\| A_2 \| C' \Leftrightarrow \| A_1 \land A_2 \| C'$
+    \item Which equals, $\| A_1 \land A_2 \| C' \Leftrightarrow \| A_1 \land A_2 \| C'$.
+    \end{enumerate}
+  \item $\neg A_1$:
+    \begin{enumerate}
+    \item IH: $ \| \UNSHIFT(A_1[l_n/\Stack_0]) \| C \Leftrightarrow \| A_1 \| C'$
+    \item Applying substitution yields $ \| \UNSHIFT(\neg (A_1[l_n/\Stack_0])) \| C \Leftrightarrow \| \neg A_1 \| C'$
+    \item Applying $\UNSHIFT$ yields $ \| \neg \UNSHIFT(A_1[l_n/\Stack_0]) \| C \Leftrightarrow \| \neg A_1 \| C'$
+    \item Which equals $ \neg \| \UNSHIFT(A_1[l_n/\Stack_0]) \| C \Leftrightarrow \| \neg A_1 \| C'$
+    \item Rewriting rhs yields $ \neg \| \UNSHIFT(A_1[l_n/\Stack_0]) \| C \Leftrightarrow \neg \| A_1 \| C'$
+    \item By lemma ? it is sufficient to show $\| \UNSHIFT(A_1[l_n/\Stack_0]) \| C \Leftrightarrow \| A_1 \| C'$
+    \item Which equals the IH.
+    \end{enumerate}
+  \item $A_1 \lor A_2$, $\IF(A_1, e_1, e_2)$ Similarly as above.
+  \item $e_1 \leq e_2$.
+    \begin{enumerate}
+    \item We need an auxillary lemma for expressions: $\forall e, \| \UNSHIFT(e[l_n/\Stack_0]) \| C = \| e \| C' $
+      
+      Proceed with structural induction on $e$.
+      \begin{itemize}
+      \item $v$: $\| \UNSHIFT(v[l_n/\Stack_0]) \| C = \| \UNSHIFT(v) \| C = \| v \| C = v = \| v \| C'$
+      \item $\Stack_k$: Case split on $k = 0$
+        \begin{itemize}
+        \item $k = 0$:    $\| \UNSHIFT(\Stack_0[l_n/\Stack_0]) \| C = \| \UNSHIFT(l_n) \| C = \| l_n \| C = ls(n) = \| l_n \| C'$
+        \item $k \neq 0$: $\| \UNSHIFT(\Stack_k[l_n/\Stack_0]) \| C = \| \UNSHIFT(s_k) \| C = \| \Stack_{k-1} \| C = s(n-1) = (l(n)::s)(n) = \| \Stack_k \| C'$
+        \end{itemize}
+      \item $e_1 + e_2$:
+        \begin{enumerate}
+        \item $\| \UNSHIFT((e_1 + e_2)[l_n/\Stack_0]) \| C$
+        \item Applying substitution yields $\| \UNSHIFT(e_1[l_n/\Stack_0] + e_2[l_n/\Stack_0]) \| C$
+        \item Applying $\UNSHIFT$ yields $\| \UNSHIFT(e_1[l_n/\Stack_0]) + \UNSHIFT(e_2[l_n/\Stack_0]) \| C$
+        \item Which equals $\| \UNSHIFT(e_1[l_n/\Stack_0]) \| C + \| \UNSHIFT(e_2[l_n/\Stack_0]) \| C$
+        \item By IH, we know that this equals $\| e_1 \| C' + \| e_2 \| C'$
+        \item Which equals $\| e_1 + e_2 \| C'$
+        \end{enumerate}
+      \item $e_1.f$:
+        \begin{enumerate}
+        \item $\| \UNSHIFT(e_1.f[l_n/\Stack_0]) \| C$
+        \item Applying substitution yields $\| \UNSHIFT(e_1[l_n/\Stack_0].f) \| C$
+        \item Applying $\UNSHIFT$ yields $\| \UNSHIFT(e_1[l_n/\Stack_0])).f \| C$
+        \item Which equals $(\| \UNSHIFT(e_1[l_n/\Stack_0]) \| C)(f)$
+        \item By IH, we know that this equals $(\| e_1 \| C')(f)$
+        \item Which equals $\| e_1.f \| C'$
+        \end{enumerate}
+
+      \item $c.f$, $l_k$, $e_1 \rightarrow e_2 \mid e_3$, $\bot$: treated similarly as above.
+      \end{itemize}
+    \item Applying substitution yields $ \| \UNSHIFT(e_1[l_n/\Stack_0] \leq e_2[l_n/\Stack_0]) \| C \Leftrightarrow \| e_1 \leq e_2 \| C'$.
+    \item Applying $\UNSHIFT$ yields $ \| \UNSHIFT(e_1[l_n/\Stack_0]) \leq \UNSHIFT(e_2[l_n/\Stack_0]) \| C \Leftrightarrow \| e_1 \leq e_2 \| C'$.
+    \item Which equals $ \| \UNSHIFT(e_1[l_n/\Stack_0]) \| C \leq \| \UNSHIFT(e_2[l_n/\Stack_0]) \| C \Leftrightarrow \| e_1 \leq e_2 \| C'$.
+    \item By lemma above, this equals $ \| e_1 \| C' \leq \| e_2 \| C' \Leftrightarrow \| e_1 \leq e_2 \| C'$.
+    \item Which equals $ \| e_1 \leq e_2 \| C' \Leftrightarrow \| e_1 \leq e_2 \| C'$.
+    \end{enumerate}
+  \end{itemize}
+
+\item {\tt astore} $n$
+\item {\tt athrow}
+\item {\tt dup}
+\item {\tt getfield} $f$
+\item {\tt getstatic} $c''$ $f$
+\item {\tt goto} $L'$
+\item {\tt iadd}
+\item {\tt iconst} $i$
+\item {\tt ifeq} $L'$
+\item {\tt invoke} $c''$ $m''$
+\item {\tt putstatic} $c''$ $f$
+\item {\tt ldc} $v$
+\item {\tt exit}
+\item {\tt ret}
+\item {\tt nop}
+\end{itemize}
+\end{proof}
+
+
+
+
+\sep
+
+
+\sect{\begin{lemma}[At most one exceptional frame]\label{lem:at_most_one_exc_arec}
+There can be at most one exceptional frame on the current activation record stack.
+\end{lemma}
+\begin{proof} Induction on the length of the execution.
+\emph{Base case:} An initial configuration has no exceptional frame. \emph{Inductive Step:} Case study of the transition rules.
+\end{proof}}
+
+\sep
+
+
+\sect{\begin{lemma}[$\WP$ correct (exceptional)]\label{lem:wp_correct_exceptional}
+If
+\begin{enumerate}
+  \item $C = (h, (o)::(c, m, \pc, s, l)::R)$,
+  \item $C' = (h', (c', m', \pc', s', l')::R')$,
+  \item $C \rightarrow C'$, and
+  \item $\|\WP_{c.m}(\pc) \| (h'', (c, m, \pc, s, l)::R)$ for some $h''$
+\end{enumerate}
+then $\| A_{\pc'} \| C'$
+\end{lemma}
+\begin{proof}(Sketch)
+\begin{enumerate}
+%\item We know that the exception was thrown as a consequence of the instruction at $c.m[\pc]$ directly ({\tt athrow}, $C = C''$) or indirectly ({\tt invoke}, $C \neq C''$). (Needs to be shown.)
+%\item In either way, we know that $c = c'$, $m = m'$, $s = \epsilon$ and $l = l'$.
+\item By the transition rules, we know that $\pc'$ must be the target label of an exception handler.
+\item From def \ref{def:local_validity_method} we know that the only way $A_{\pc'}$ references the heap is by $\Inv$.
+\item From def \ref{def:local_validity_method} we know that $A_{\pc'}$ does not mention the stack.
+\item From def of $\WP^E$ we know that $A_{\pc'}$ held at $C''$ and that nothing $A_{\pc'}$ mentiones has changed since then.
+\end{enumerate}
+\end{proof}}
+
+\sep
+
+\newpage
+
+%\sect{\begin{lemma}[At most one push to ar-stack]\label{lem:most_one_ar_push}
+%If $(h, R) \rightarrow (h', R'++R)$, then $R'$ is of the shape $nil$ or $a$ (single activation record). (Or, in words, a transition adds \emph{at most one} activation record to the activation record stack.)
+%\end{lemma}
+%\paragraph{Proof} Case analysis of possible transitions.
+%}
+
+\sect{\begin{lemma}[Activation Record Suffixes]\label{lem:ar_suffixes}
+%If $(h, R) \rightarrow (h', R')$, and $R''$ is a proper suffix of $R'$, then $R''$ is a suffix of $R$.
+If $(h, R) \rightarrow (h', a::R')$ then $R'$ is a suffix of $R$.
+\end{lemma}
+\begin{proof} Case analysis of possible transitions.\end{proof}
+}
+
+
+\sep
+
+
+\sect{\begin{lemma}[All activation records in current ar-stack has been on top]\label{lem:all_suffs_in_ex}
+If $\ex = (h_0, R_0)\ldots (h,R)$ is an execution of $P$, then for all non-empty suffixes $R''$ of $R$, there exists a heap $h''$ such that $(h'', R'')$ is a configuration in $\ex$.
+\end{lemma}
+\begin{proof} By induction on the structure of an execution.
+\begin{itemize}
+\item Base Case: $\ex = (h_0, R_0)$ (an initial configuration)
+  \begin{enumerate}
+  \item Assume $\ex$ is an execution of $P$.
+  \item Since $(h_0, R_0)$ must be an initial configuration, we have $R_0 = \ar :: nil$.
+  \item The only non-empty suffix $R''$ of $\ar::nil$ is $\ar::nil$.
+  \item Thus there exists an $h''$, namely $h_0$ such that $(h'', R'') \in \ex$.
+  \end{enumerate}
+\item Inductive Step: $\ex = \ex'(h,R)(h', R')$
+  \begin{enumerate}
+  \item Assume $\ex$ is an execution of $P$.
+  \item Assume $R''$ is a non-empty suffix of $R'$.
+  \item We do a case split on the type of suffix:
+    \begin{itemize}
+      \item $R' = R''$ ($R''$ is a ``non-proper'' suffix):
+        \begin{enumerate}
+        \item There exists an $h''$, namely $h'$ such that $(h'', R'') \in \ex(h,R)(h', R')$
+        \end{enumerate}
+      \item $R' = a_0::...::a_k::R''$ ($R''$ is a proper suffix):
+        \begin{enumerate}
+        \item Since $\ex(h,R)(h',R')$ is an execution, we have $(h, R) \rightarrow (h', R')$.
+        \item By lemma \ref{lem:ar_suffixes} we know that $R''$ is a suffix of $R$.
+        \item By IH we know that this lemma holds for $\ex(h, R)$.
+        \item Therefor there exists a $h''$ such that $(h'', R'') \in \ex (h, R)$
+        \item Thus there exists a $h''$ such that $(h'', R'') \in \ex (h, R) (h', R')$
+        \end{enumerate}
+    \end{itemize}
+
+
+  \end{enumerate}
+\end{itemize}
+\end{proof}
+}
+
+
+\sep
+
+
+\sect{
+\begin{theorem}[Local Validity implies Global Validity]
+  For any annotated program $P$, if $P$ is locally valid, then $P$ is globally valid.
+\end{theorem}
+
+\begin{proof}
+\begin{enumerate}
+\item Assume that $P$ is locally valid.
+\item Pick an arbitrary execution $\ex$ of $P$ and show that it is valid.
+\item Proceed by structural induction on $\ex$. (Note that executions are not empty.)
+  \begin{description}
+  \item[Base Case:] $\ex$ can be written as $C_0$ where $C_0$ denotes an initial configuration.
+    
+    \begin{enumerate}
+    \item By definition, $\Default$ holds in $C_0$.
+    \item By def \ref{def:local_validity_program}.2 $\Inv$ holds in $C_i$.
+    \item To show that $\ex$ is a valid execution, we show:
+      \begin{itemize}
+      \item If $C_0$ is visible (calling or returning), then $\Inv$ holds.
+        
+        \begin{enumerate}
+        \item That $\Inv$ holds in $C_0$ is established above.
+        \end{enumerate}
+        
+      \item If $C_0$ is of the form $(h, (c, m, \pc, s, l)::R)$, then $\| A_{\pc} \| C_i$ holds.
+        
+        \begin{enumerate}
+        \item That $\Inv$ holds in $C_0$ is established above.
+        \item By def \ref{def:local_validity_method}.1 $\|A_0\|C_i$ holds.
+        \end{enumerate}
+
+      \end{itemize}
+    \end{enumerate}
+    
+    
+  \item[Inductive Case:] $\ex$ can be written as $\ex'C_i$ where $\ex'$ is a valid execution.
+    
+    According to def of valid execution, we need to show that
+    \begin{itemize} 
+      \item If $C_i$ is of the form $(h', (c', m', \pc', s', l')::R')$, then $\| A_{\pc'} \| C_i$ holds.
+      
+      Note that by IH, $\ex'$ is a valid execution and thus of length at least 1. We split proof into two cases:
+      \begin{itemize}
+      \item Previous configuration is normal: $C_{i-1} = (h, (c, m, \pc, s, l)::R)$
+
+        \begin{enumerate}
+          \item By IH we know that $\| A_{\pc} \| C_{i-1}$ holds.
+          \item By local validity we therefor know $\| \WP_{c.m}(\pc) \|C_{i-1}$.
+          \item By lemma \ref{lem:wp_correct_normal}, $\| A_{\pc'} \| C_i$ holds.
+        \end{enumerate}
+        
+      \item Previous configuration is exceptional: $C_{i-1} = (h, (o)::R)$
+        
+        \begin{enumerate}
+          \item First note that $R$ may not be nil since we do have a successor.
+          \item By lemma \ref{lem:at_most_one_exc_arec} we know that $R$ can be written on the form $(c, m, \pc, s, l)::R''$.
+          \item Let $C''$ denote the configuration at which $(c, m, \pc, s, l)$ was the top of the ar-stack. (Some such configuration exists according to lem \ref{lem:all_suffs_in_ex}.)
+          \item By IH we know that $\| A_{\pc} \| C''$ hold.
+          \item By local validity we thus know that $\| \WP_{c.m}(\pc) \| C''$ hold.
+          \item By lemma \ref{lem:wp_correct_exceptional}, $\| A_{\pc'} \| C_i$ holds.
+        \end{enumerate}
+        
+      \end{itemize}
+      
+    \item If $C_i$ is calling, then $\Inv$ holds.
+      \begin{enumerate}
+      \item Due to lemma \ref{lem:invoke_only_caller}, we know that the current instruction is an invoke.
+      \item Since $\WP$ of an invoke instruction is $\Inv$ we know by def \ref{def:local_validity_method}.2 that the current assertion implies $\Inv$.
+      \item By the same reasoning as above, we know that the current assertion holds, thus $\Inv$ holds.
+      \end{enumerate}
+    \item If $C_i$ is returning, then $\Inv$ holds.
+
+      (Sketch) Should be ensured by local validity + def of $\WP$
+      
+      \begin{itemize}
+      \item Normal return: $\WP^N$
+      \item Exceptional return: $\WP^E$
+      \end{itemize}
+      
+      
+    \end{itemize}
+    
+  \end{description}
+\end{enumerate}
+\end{proof}
+}
+
+
+\newpage
+\section{EXISTS\_EXEC\_WITH\_EQ\_GUS}
+\newcommand{\ssus}{\mathit{ssus}}
+\newcommand{\gus}{\mathit{gus}}
+\newcommand{\sst}{\mathit{sst}}
+\renewcommand{\ss}{\mathit{ss}}
+\newcommand{\gv}{\mathit{gv}}
+\newcommand{\pref}{\mathit{pref}}
+
+\begin{lemma}[before\_gu\_precedes\_before\_ssu]\label{lem:before_gu_precedes_before_ssu}
+An instruction that causes a sec-state-update of the shape {\tt contract after c m} is always preceded by an instruction on the form {\tt ghost\_update (contract after c m)}.
+\end{lemma}
+\begin{proof}
+TBD.
+\end{proof}
+
+
+\begin{lemma}[gu\_after\_follows\_ssu\_after]\label{lem:gu_after_follows_ssu_after}
+An instruction causing a sec-state-update of the shape {\tt contract after c m} may be followed by an instruction on the form {\tt ghost\_update (contract after c m)}.
+\end{lemma}
+\begin{proof}
+TBD.
+\end{proof}
+
+\begin{lemma}[after\_su\_precedes\_after\_gu]\label{lem:after_su_precedes_after_gu}
+An instruction on the form {\tt ghost\_update (contract before c m)} is always preceded by an instruction that causes a {\tt before c m}-event (which in turn gives rise to a sec-state-update of the shape {\tt contract before c m}).
+\end{lemma}
+\begin{proof}
+TBD.
+\end{proof}
+
+\begin{lemma}[exec\_tail\_cases]\label{lem:exec_tail_cases}
+For each execution $E$ of a ghost inlined program, that ends in a configuration $C$, we have:
+\\\begin{tabular}{llll}
+1: & (1a) $C = $ {\tt before-ghost-update gu}      & and (1b) {\tt (ssus $E$) ++ gu = gus $E$}   & OR \\
+2: & (2a) $C = $ {\tt before-sec-state-update}     & and (2b) {\tt ssus $E$ = gus $E$}           & OR \\
+3: & (3a) $C = $ {\tt after-sec-state-update ssu}  & and (3b) {\tt ssus $E$ = (gus $E$) ++ ssu}  & OR \\
+4: & (4a) $C = $ {\tt after-ghost-update gu}       & and (4b) {\tt ssus $E$ = gus $E$}           & OR \\
+5: & (5a) $C = $ {\tt none of the above}           & and (5b) {\tt ssus $E$ = gus $E$}           &
+\end{tabular}
+\end{lemma}
+
+\begin{proof}
+This can be shown by induction over the length of $E$. The base case is trivial. Case 2 should follow from lemma \ref{lem:before_gu_precedes_before_ssu}. Case 4 should follow from lemma \ref{lem:after_su_precedes_after_gu}.
+\end{proof}
+
+\begin{lemma}[EXISTS\_EXEC\_WITH\_EQ\_GUS]\label{lem:exists_exec_with_eq_gus}
+For all executions $E$ of a ghost inlined program, there exists an extended execution $E'$ of $E$, such that the ghost state updates of $E'$ ($\gus(E')$) equal the security state updates of $E$ ($\ssus(E)$).
+\end{lemma}
+
+\begin{proof}
+  \begin{enumerate}
+  \item Pick an arbitrary $E$ (and show $\exists E', \ssus(E) = \gus(E')$.
+  \item The case in which $E = \mathit{nil}$ is trivial, thus we assume that $E = E0 \app C$.
+  \item Thus we have left to show $\exists E', \ssus(E0 \app C) = \gus(E')$.
+  \item We do a case-split on the type of $C$ according to lemma \ref{lem:exec_tail_cases} above.
+    
+    \begin{enumerate}
+    \item[Case 1:]
+      \begin{enumerate}
+      \item We choose $E0$ as our $E'$ and show that $\ssus(E0 \app C) = \gus(E0)$.
+      \item (1b) gives $(\ssus E0 \app C) \app \mathit{gu} = \gus(e0 \app c)$.
+      \item Using (1a) we rewrite it as $(\ssus E0 \app C) = \gus(e0)$.
+      \end{enumerate}
+    \item[Case 2:]
+      \begin{enumerate}
+      \item We choose $E0 \app C$ as our $E'$.
+      \item $\ssus(E0 \app C) = \gus(E0 \app C)$ follows from (2b).
+      \end{enumerate}
+    \item[Case 3:]
+      \begin{enumerate}
+      \item According to (3a) the configuration $C$ points at a {\tt ret}-instruction.
+      \item Let $C'$ be the configuration that follows after executing the {\tt ret} from $C$.
+      \item We choose $E0 \app C \app C'$ as our $E'$ and show that $\ssus(E0 \app C) = \gus (E0 \app C \app C')$.
+      \item According to (3b) we have $\ssus(E0 \app C) = \gus(E0 \app C) \app \mathit{ssu}$.
+      \item According to lemma \ref{lem:gu_after_follows_ssu_after}, $C'$ points at the instruction {\tt ghost\_update ssu}.
+      \item Thus we have $\ssus(E0 \app C) = \gus(E0 \app C \app C')$.
+      \end{enumerate}
+    \item[Case 4:]
+      \begin{enumerate}
+      \item We choose $E0 \app C$ as our $E'$.
+      \item $\ssus(E0 \app C) = \gus(E0 \app C)$ follows from (4b).
+      \end{enumerate}
+    \item[Case 5:]
+      \begin{enumerate}
+      \item We choose $E0 \app C$ as our $E'$.
+      \item $\ssus(E0 \app C) = \gus(E0 \app C)$ follows from (4b).
+      \end{enumerate}
+    \end{enumerate}
+  \end{enumerate}
+\end{proof}
+
+\sep
+
+
+
+\newpage
+\section{SST\_SUBSET\_GVS}
+
+\begin{lemma}[EXISTS\_SSUS\_PREFIX]\label{lem:exists_ssus_prefix}
+For all executions $E$, if $\sst$ is the security state trace of the sec-state updates $\ssus(E)$ and $\ss \in \sst$, then there exists a prefix $\ssus_\pref$ of $\ssus(E)$ such that $\ssus_\pref$ takes the initial sec-state to $\ss$.
+\end{lemma}
+\begin{proof}
+I'm guessing: By induction on the length of $\ssus$. Try it out in Coq.
+\end{proof}
+
+\sep
+
+\begin{lemma}[GUS\_PREF\_IMPLIES\_EXEC\_PREF]\label{lem:gus_pref_implies_exec_pref}
+For all executions $E$, If $\gus_\pref$ is a prefix of $\gus(E)$, then there exists a prefix $E_\pref$, such that $\gus_\pref = \gus(E_\pref)$.
+\end{lemma}
+\begin{proof}
+Inversion on the prefix-predicate + induction. I have a Coq-proof outline for this.
+\end{proof}
+
+\sep
+
+\begin{lemma}[SS\_AFTER\_EQUALS\_GV\_LAST]\label{lem:ss_after_equals_gv_last}
+For all executions on the form $E$, security update lists $\ssus$ % Not neccesarily ssus of E!
+and security states $\ss$, if $\ssus$ takes the initial security state to $\ss$, and $\ssus = gus(E)$, then $E$ is on the form $E' \app (\ss, \_, \_)$.
+\end{lemma}
+\begin{proof}
+I'm guessing: Induction on $\ssus$. Try it out in Coq.
+
+EDIT: Seems to work out!
+\end{proof}
+
+\sep
+
+\begin{lemma}[SSUS\_EQ\_GUS\_IMPLIES\_SST\_SUBSET\_GVS]\label{lem:ssus_eq_gus_implies_sst_subset_gvs}
+For all executions $E$ and $E'$ of a program, such that $\ssus(E) = \gus(E')$, then $\sst(E) \subseteq \{ \gv \mid (gv, \_, \_) \in E'\}$.
+\end{lemma}
+
+\begin{proof}
+\begin{enumerate}
+\item Pick an arbitrary $\ss \in \sst(E)$ (and then show that $(\ss, \_, \_) \in E'$)
+\item Let $\pref$ denote the prefix of $\ssus(E)$ which takes the initial sec-state to $ss$. (Such prefix exists due to lemma \ref{lem:exists_ssus_prefix}).
+\item Since $\ssus(E) = \gus(E')$, $\pref$ is also a prefix of $\gus(E')$.
+\item By lemma \ref{lem:gus_pref_implies_exec_pref}, there exists a prefix $E'_\pref$ of $E'$, such that $\gus(E'_\pref) = \pref$.
+\item Since $\pref$ takes the initial sec-state to $\ss$, lemma \ref{lem:ss_after_equals_gv_last} says that $E'_\pref$ ends with $(\ss, \_, \_)$.
+\item Since $(\ss, \_, \_) \in E'_\pref$ we have $(\ss, \_, \_) \in E'$
+\end{enumerate}
+\end{proof}
+
+\sep
+
+
+\begin{lemma}[SST\_SUBSET\_GVS]
+For all ghost inlined programs $P^g = {\cal I}^g(P, \cal C)$, executions $E^g$ of $P^g$, let $\sst$ denote the security automaton trace (under $\cal C$), then there exists an execution $E'^g$ of $P^g$ such that $\sst \subseteq \{ \gv \mid (gv, \_, \_) \in E'^g \}$.
+\end{lemma}
+
+\begin{proof}
+\begin{enumerate}
+\item Let $E'^g$ be the extended execution of $E^g$ such that $\gus(E'^g) = \ssus(E^g)$. (Such execution exists by lemma \ref{lem:exists_exec_with_eq_gus}.
+\item By lemma \ref{lem:ssus_eq_gus_implies_sst_subset_gvs}, $\sst \subseteq \{ \gv \mid (gv, \_, \_) \in E'^g \}$.
+\end{enumerate}
+\end{proof}
+
+\sep
+
+\end{document}
