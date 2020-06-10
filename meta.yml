@@ -1,0 +1,83 @@
+---
+fullname: PCC
+shortname: pcc
+organization: palmskog
+community: false
+travis: false
+coqdoc: false
+dune: true
+
+synopsis: >-
+  Coq formalization of a proof carrying code framework for
+  inlined reference monitors in Java bytecode
+
+description: |-
+  A light-weight approach for certification of monitor inlining for
+  sequential Java bytecode using proof-carrying code, formalized
+  in Coq.
+
+publications:
+- pub_url: https://arxiv.org/abs/1012.2995
+  pub_title: A Proof Carrying Code Framework for Inlined Reference Monitors in Java Bytecode
+
+authors:
+- name: Andreas Lundblad
+  initial: true
+- name: Karl Palmskog
+  initial: false
+
+opam-file-maintainer: palmskog@gmail.com
+
+opam-file-version: dev
+
+license:
+  fullname: Unknown
+  identifier: UNKNOWN
+
+supported_coq_versions:
+  text: 8.10 or later
+  opam: '{(>= "8.10" & < "8.13~") | (= "dev")}'
+
+tested_coq_nix_versions:
+- version_or_url: https://github.com/coq/coq-on-cachix/tarball/master
+- version_or_url: https://github.com/coq/coq-on-cachix/tarball/v8.12
+- version_or_url: '8.11'
+- version_or_url: '8.10'
+
+tested_coq_opam_versions:
+- version: dev
+
+dependencies:
+- opam:
+    name: coq-mathcomp-ssreflect
+    version: '{>= "1.9" & < "1.11~"}'
+  nix: ssreflect
+  description: |-
+    [MathComp](https://math-comp.github.io) 1.9.0 or later (`ssreflect` suffices)
+
+namespace: PCC
+
+keywords:
+- name: proof-carrying code
+- name: Java
+- name: bytecode
+
+categories:
+- name: Computer Science/Decision Procedures and Certified Algorithms/Correctness proofs of algorithms
+
+build: |-
+ ## Building instructions
+
+ ``` shell
+ git clone https://github.com/palmskog/pcc.git
+ cd pcc
+ make   # or make -j <number-of-cores-on-your-machine>
+ ```
+
+documentation: |-
+  ## Documentation
+
+  The [paper][arxiv-paper] has more information about the approach.
+
+  [arxiv-paper]: https://arxiv.org/abs/1012.2995
+---

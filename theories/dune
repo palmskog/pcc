@@ -1,0 +1,5 @@
+(coq.theory
+ (name PCC)
+ (package coq-pcc)
+ (modules list_utils java_basic_defs expressions_assertions program_model semantics_assertions weakest_precondition validity security_defs)
+ (synopsis "Coq formalization of a proof carrying code framework for inlined reference monitors in Java bytecode"))
