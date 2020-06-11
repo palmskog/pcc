@@ -1,5 +1,6 @@
-Require Export program_model.
-Require Import ssreflect.
+From Coq Require Import List.
+From PCC Require Import java_basic_defs program_model expressions_assertions.
+From mathcomp Require Import ssreflect.
 
 Section SecurityDefs.
   
@@ -91,7 +92,7 @@ Definition accepted_by contr (event_tr: event_trace) :=
     (forall ss, In ss sec_tr -> ~ violating_sec_state ss).
 
 Definition adheres_to p contr : Prop :=
-  forall `(execution_of p e), accepted_by contr (event_trace_of p e).
+  forall e, execution_of p e -> accepted_by contr (event_trace_of p e).
 
 (*
    The original definition of "Ghost Instruction Goes Wrong" is, 

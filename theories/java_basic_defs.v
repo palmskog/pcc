@@ -1,5 +1,5 @@
-Require Export ZArith.
-Require Export List.
+Require Import ZArith.
+Require Import List.
 
 Section JavaBasicDefs.
   
@@ -28,5 +28,3 @@ Definition emptystack : stack := nil.
 End JavaBasicDefs.
 
 Notation "s '[[' n ']]'" := (nth n s undefval) (at level 90).
-
-

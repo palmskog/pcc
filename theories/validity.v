@@ -1,7 +1,6 @@
-
-Require Import list_utils.
-Require Export semantics_assertions.
-Require Export weakest_precondition.
+From Coq Require Import List Lia.
+From PCC Require Import list_utils java_basic_defs program_model expressions_assertions semantics_assertions weakest_precondition.
+From mathcomp Require Import ssreflect.
 
 (* The default variable denotes an assertion that expresses that
    all variables have their default values. *)
@@ -73,7 +72,7 @@ Section validity.
   Qed.
   
   
-  Definition globally_valid : Prop := forall `(execution_of p e), valid_exec e.
+  Definition globally_valid : Prop := forall e, execution_of p e -> valid_exec e.
   
   
   Definition locally_valid_meth cid mid : Prop :=
@@ -85,19 +84,6 @@ Section validity.
     (forall cid mid, locally_valid_meth cid mid) /\
     (forall c, ∥ default ∥ c -> ∥ ast_at p maincid mainmid O ∥ c) /\
     (forall c, ∥ default ∥ c -> ∥ inv p ∥ c).
-  
-  
-  Lemma wp_correct_normal :
-    forall h cid mid pc s ls ars c' a,
-      let c := (h, (normal cid mid pc s ls)::ars) in
-        trans p c c' ->
-        normal_conf c' ->
-        current_ast p c' = Some a ->
-        (∥ wp p cid mid pc ∥ c <->
-        ∥ a ∥ c').
-
-intros.
-inversion H; subst.
 
 (* aload n *)
 Lemma wp_correct_normal_aload : forall c m pc s ls h n ars gv,
@@ -468,10 +454,19 @@ apply IHa1 in H6; assumption.
 apply is_norm_conf.
 apply is_norm_conf.
 apply IHa3 in H7; assumption.
-Qed.
-
-
-
+Qed.  
+  
+  Lemma wp_correct_normal :
+    forall h cid mid pc s ls ars c' a,
+      let c := (h, (normal cid mid pc s ls)::ars) in
+        trans p c c' ->
+        normal_conf c' ->
+        current_ast p c' = Some a ->
+        (∥ wp p cid mid pc ∥ c <->
+        ∥ a ∥ c').
+Proof.
+intros.
+inversion H; subst.
 inversion H0; subst.
 inversion H1; subst.
 inversion H2; subst.
@@ -489,7 +484,6 @@ apply wp_correct_normal_aload; assumption.
 (* This whole lemma could probably be solved with some proof search
    automation and/or ssreflect. Consult Karl. *)
 Admitted.
-  
   
   Lemma wp_correct_exceptional :
     forall gv h o cid mid pc s ls ars gv'' h'' c' a,
@@ -536,8 +530,6 @@ Admitted.
     simpl.
     assumption.
   Qed.
-  
-  
   
   Theorem strong_exec_ind (P: execution -> Prop) :
     P nil ->
@@ -633,7 +625,6 @@ Admitted.
     inversion H0; inversion H5; inversion H7; subst; apply suffix_next; apply suffix_here.
 Qed.
   
-  
   Lemma all_ars_has_been_on_top :
     forall exec,
       execution_of p exec ->
@@ -712,11 +703,11 @@ Qed.
   Qed.
   
   
-  Lemma no_empty_ar_stack_trans : forall `(trans p (gv, h, ar :: ars) (gv', h', nil)), False.
+  Lemma no_empty_ar_stack_trans : forall gv h ar ars gv' h', trans p (gv, h, ar :: ars) (gv', h', nil) -> False.
     intros.
-    inversion trans0; subst.
-    inversion H0; subst.
     inversion H; subst.
+    inversion H1; subst.
+    inversion H0; subst.
   Qed.
   
   
@@ -753,9 +744,8 @@ apply in_or_app.
 right.
 auto with datatypes.
 apply exec_impl_trans in H.
-contradict (no_empty_ar_stack_trans H).
+contradict (no_empty_ar_stack_trans _ _ _ _ _ _ H).
 Qed.
-
   
   
   Lemma calling_only_invoke :
@@ -772,9 +762,9 @@ Qed.
     rename H1 into H_atrans.
     inversion H0.
     subst.
-    inversion H_atrans; subst; inversion H; contradict H9; apply list_neq_length; simpl; omega.
+    inversion H_atrans; subst; inversion H; contradict H9; apply list_neq_length; simpl; lia.
     inversion H.
-    contradict H16; apply list_neq_length; simpl; omega.
+    contradict H16; apply list_neq_length; simpl; lia.
   Qed.
   
   
@@ -810,13 +800,13 @@ Qed.
     inversion H5; subst; subst cnf; (try
       inversion H2; inversion H4; subst;
         inversion H4; contradict H8;
-          apply list_neq_length; simpl; omega).
+          apply list_neq_length; simpl; lia).
     
     (* ghost-trans *)
     subst cnf.
     inversion H2.
     contradict H15.
-    apply list_neq_length; simpl; omega.
+    apply list_neq_length; simpl; lia.
     
     inversion H.
     pose proof (H2 c m).
@@ -843,11 +833,11 @@ Qed.
   Qed.
   
   
-  Lemma no_double_exc_trans : forall `(trans p c (gv, h, exceptional o1 :: exceptional o2 :: ars)), exists gv', exists h', c = (gv', h', exceptional o1 :: exceptional o2 :: ars).
+  Lemma no_double_exc_trans : forall c gv h o1 o2 ars, trans p c (gv, h, exceptional o1 :: exceptional o2 :: ars) -> exists gv', exists h', c = (gv', h', exceptional o1 :: exceptional o2 :: ars).
     intros.
-    inversion trans0; subst.
-    inversion H1; subst; try (inversion H0; inversion H0; subst).
-inversion H; subst.
+    inversion H; subst.
+    inversion H2; subst; try (inversion H1; inversion H1; subst).
+  inversion H0; subst.
   Qed.
   
   

@@ -1,5 +1,6 @@
-Require Export program_model.
-Require Import ssreflect.
+From PCC Require Import java_basic_defs expressions_assertions program_model.
+From Coq Require Import ZArith.
+From mathcomp Require Import ssreflect.
 
 Section SemanticsAssertions.
   
@@ -25,9 +26,9 @@ Qed.
 
 Set Printing Coercions.
 
-Lemma deterministic_geeval : forall `(g_eeval e c v1) `(g_eeval e c v2), v1 = v2.
+Lemma deterministic_geeval : forall e c v1 v2, g_eeval e c v1 -> g_eeval e c v2 -> v1 = v2.
 Proof.
-move => e c v1 H_geeval1 v2 H_geeval2.
+move => e c v1 v2 H_geeval1 H_geeval2.
 inversion H_geeval1; inversion H_geeval2; subst; rewrite //; first by injection H2.
 by inversion H_geeval1; inversion H_geeval2.
 Qed.
@@ -50,13 +51,8 @@ elim => [|g c H_norm|e IH f c H_norm|c f c0|n c|||].
         have H1: ((exists l, x = refval l) \/ (forall l, x <> refval l)) by admit.
         elim H1; intros.
         elim H0; intros.
-        
-  *
 
-  
-
-
-
+  (*
   inversion H; subst.
   elim IHe; intros.
 
@@ -207,6 +203,8 @@ assumption.
 intros.
 discriminate.
 Qed.
+*)
+Admitted.
 
 
 (*
@@ -746,7 +744,7 @@ Theorem invert_aeval :
 Qed.
 
 
-End semantics_assertions.
+End SemanticsAssertions.
 
 Notation "'∥' a '∥' c" := (aeval a c) (at level 90).
 (* Notation "'∥' e '∥' c" := (eeval e c) (at level 90). *)

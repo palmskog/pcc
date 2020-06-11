@@ -1,4 +1,4 @@
-Require Export java_basic_defs.
+From PCC Require Import java_basic_defs.
 
 Section ExpressionsAssertions.
   
@@ -39,6 +39,3 @@ Definition ghost_expr e :=
   sub_exp ghost_errval e \/ exists gid, sub_exp (ghost_var gid) e.
 
 End ExpressionsAssertions.
-
-
-

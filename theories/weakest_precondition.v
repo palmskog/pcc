@@ -1,6 +1,5 @@
-
-Require Export program_model.
-Require Export Bool.
+From PCC Require Import java_basic_defs program_model expressions_assertions.
+From Coq Require Import Arith Bool ZArith.
 
 Section weakest_precondition.
   

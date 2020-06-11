@@ -1,13 +1,15 @@
-Require Export List.
-Require Import Arith.
-Require Import Omega.
-Require Import ssreflect.
+From Coq Require Import List.
+From Coq Require Import Arith.
+From Coq Require Import Lia.
+From mathcomp Require Import ssreflect.
 
 Set Implicit Arguments.
+Unset Strict Implicit.
+Unset Printing Implicit Defensive.
 
 Section ListUtils.
 
-Variable A : Set.
+Variable A : Type.
 
 Lemma app_cons_has_head : forall (a : A) l l', exists a', exists l'', l ++ a :: l' = a' :: l''.
 Proof. 
@@ -90,7 +92,7 @@ move => l' l H.
 apply proper_prefix_split in H.
 move: H => [a' [l'' H]].
 rewrite H app_length /=.
-by omega.
+by lia.
 Qed.
 
 Theorem proper_prefix_well_founded : well_founded (@proper_prefix).
@@ -102,7 +104,7 @@ Qed.
 Theorem strong_list_ind (P: list A -> Prop) :
   (forall l, (forall l', proper_prefix l' l -> P l') -> P l) -> forall l, P l.
 Proof.
-move => P H.
+move => H.
 apply well_founded_ind with (R := @proper_prefix).
 apply proper_prefix_well_founded.
 move => x H0.

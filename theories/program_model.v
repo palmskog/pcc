@@ -1,7 +1,6 @@
-Require Export expressions_assertions.
-Require Export Bool.
-Require Import list_utils.
-Require Import ssreflect.
+From PCC Require Import list_utils java_basic_defs expressions_assertions.
+From Coq Require Import List Bool ZArith.
+From mathcomp Require Import ssreflect.
 
 Section ProgramModel.
   
@@ -299,9 +298,8 @@ Inductive g_eeval : expr -> ghost_valuation -> value -> Prop :=
     
 Inductive ghosttrans : program -> conf -> conf -> Prop :=
 | tr_ghost_upd :
-  forall h ars s ls
-    `(instr_at p c m pc = ghost_instr (gvar, e))
-    `(g_eeval e gv v),
+    forall h ars s ls p c m pc gvar e gv v,
+      instr_at p c m pc = ghost_instr (gvar, e) -> g_eeval e gv v ->
     ghosttrans p (gv, h, (normal c m pc s ls) :: ars)
       (upd_gv gv gvar v, h, (normal c m (successor p c m pc) s ls) :: ars).
     
@@ -334,13 +332,14 @@ Inductive trans_star : program -> execution -> Prop :=
     trans_star p (c' :: e) ->
     trans_star p (c :: c' :: e).
   
-Lemma trans_star_seq : forall p c `(trans_star p (e1 ++ c :: nil)) `(trans_star p (c :: e2)),
+Lemma trans_star_seq : forall p c e1 e2,
+  trans_star p (e1 ++ c :: nil) -> trans_star p (c :: e2) ->
   trans_star p (e1 ++ c :: e2).
 Proof.
 move => p c.
 elim => [|c']; first by [].
-case => [|c0 l] IH H0 e2 H1; rewrite -app_comm_cons /=.
-- by apply tr_star_step; first by inversion H0.
+case => [|c0 l] IH e2 H0 H1; rewrite -app_comm_cons /=.
+- by apply tr_star_step; inversion H0.
 - apply tr_star_step; first by inversion H0.
   rewrite /= in IH; apply IH; last by [].
   by inversion H0.
@@ -385,17 +384,17 @@ move => pref c c' suffx H.
 by contradict H; auto with datatypes.
 Qed.
 
-Lemma exec_sing_impl_initial : forall `(execution_of p (c :: nil)), initial_conf c.
+Lemma exec_sing_impl_initial : forall p c, execution_of p (c :: nil) -> initial_conf c.
 Proof.
 move => p c H_exec.
 inversion H_exec as [exec H_init H_trans H_eq].
 by apply H_init.
 Qed.
 
-Lemma exec_append : forall `(execution_of p (e ++ c :: nil)) `(trans p c c'),
+Lemma exec_append : forall p e c c', execution_of p (e ++ c :: nil) -> trans p c c' ->
   execution_of p (e ++ c :: c' :: nil).
 Proof.
-move => p e c H_exec c' H_trans.
+move => p e c c' H_exec H_trans.
 inversion H_exec as [e' H_init H_suff H_eq].
 apply exec_intros.
 - pose proof (list_same_head e c c') as H_head.
@@ -426,7 +425,7 @@ apply exec_intros.
     by rewrite H_rl app_ass -app_comm_cons.
 Qed.
   
-Lemma exec_impl_trans_star : forall p `(execution_of p e), trans_star p e.
+Lemma exec_impl_trans_star : forall p e, execution_of p e -> trans_star p e.
 Proof.
 move => p e H_exec.
 inversion H_exec as [e' H_init H_suff H_eq].
