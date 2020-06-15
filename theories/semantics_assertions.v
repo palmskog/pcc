@@ -41,354 +41,60 @@ elim => [|g c H_norm|e IH f c H_norm|c f c0|n c|||].
   * by exists ghost_errval; apply e_ghosterr.
 - inversion H_norm; subst.
   by exists (gv g); apply e_ghostvar.
-- elim (IH c H_norm).
-  case.
-  * case => [z|b|l H|].
-    - by exists undefval; apply e_nsfield_err1 with (v := intval z).
-    - by exists undefval; apply e_nsfield_err1 with (v := boolval b).
-    - inversion H; subst.
-      + elim (IH c H_norm) => x H_eeval.
-        have H1: ((exists l, x = refval l) \/ (forall l, x <> refval l)) by admit.
-        elim H1; intros.
-        elim H0; intros.
-
-  (*
-  inversion H; subst.
-  elim IHe; intros.
-
-  assert ((exists l, x = refval l) \/ (forall l, x <> refval l)).
-    destruct x.
-    destruct j.
-    right; intros; intro; discriminate.
-    right; intros; intro; discriminate.
-    left; exists l0; reflexivity.
-    right; intros; intro; discriminate.
-    right; intros; intro; discriminate.
-  
-  elim H1; intros.
-elim H2; intros.
-destruct h as (dh, sh).
-
-assert (dh x0 = None \/ exists obj, dh x0 = Some obj).
-  destruct (dh x0).
-  right; exists o; reflexivity.
-  left; reflexivity.
-
-elim H5; intros.
-exists undefval.
-apply e_nsfield_err2 with (gv := gv) (dh := dh) (sh := sh) (ars := normal c0 m pc s ls :: ars) (l := x0).
-reflexivity.
-rewrite <- H4; assumption.
-assumption.
-
-elim H6; intros obj.
-exists (obj f).
-apply e_nsfield with (gv := gv) (dh := dh) (sh := sh) (ars := normal c0 m pc s ls :: ars) (l := x0).
-reflexivity.
-rewrite <- H4; assumption.
-assumption.
-
-exists undefval.
-apply e_nsfield_err1 with (v := x).
-assumption.
-assumption.
-
-exists undefval.
-apply e_nsfield_err1 with (v := undefval).
-assumption.
-intros.
-intro; discriminate.
-
-exists undefval.
-apply e_nsfield_err1 with (v := ghost_errval).
-assumption.
-intros.
-intro; discriminate.
-
-(* sfield *)
-inversion H; intros.
-destruct h as (dh, sh).
-assert ((sh c0) f = None \/ exists v, (sh c0) f = Some v).
-  destruct (sh c0).
-  right; exists j; reflexivity.
-  left; reflexivity.
-elim H1; intros.
-exists undefval.
-apply e_sfield_err with (gv := gv) (dh := dh) (sh := sh) (ars := normal c1 m pc s ls :: ars).
-reflexivity.
-assumption.
-elim H2; intros.
-exists x.
-apply e_sfield with (gv := gv) (dh := dh) (sh := sh) (ars := normal c1 m pc s ls :: ars).
-reflexivity.
-assumption.
-
-(* stackexp *)
-inversion H; subst.
-exists (s[[n]]).
-apply e_stack.
-reflexivity.
-
-(* local n *)
-inversion H; subst.
-exists (ls n).
-apply e_local.
-reflexivity.
-
-(* plus *)
-elim IHe1; intros.
-assert (is_intval x \/ ~is_intval x).
-  apply int_or_other.
-elim H1; intros.
-
-elim IHe2; intros.
-assert (is_intval x0 \/ ~is_intval x0).
-  apply int_or_other.
-elim H4; intros.
-inversion H2; inversion H5; subst.
-exists (intval (x1 + x2)).
-apply e_plus.
-assumption.
-assumption.
-
-exists undefval.
-apply e_plus_err with (v1 := x) (v2 := x0).
-assumption.
-assumption.
-right; assumption.
-
-exists undefval.
-elim IHe2; intros.
-apply e_plus_err with (v1 := x) (v2 := x0).
-assumption.
-assumption.
-left; assumption.
-
-(* guarded *)
-elim IHe1; elim IHe2; elim IHe3; intros.
-assert (forall v, (exists b, v = boolval b) \/ forall b, v <> boolval b).
-  intros.
-  destruct v.
-  right; intros; discriminate.
-  left; exists b; reflexivity.
-  right; intros; discriminate.
-  right; intros; discriminate.
-destruct x1.
-elim (H3 j); intros.
-elim H4; intros.
-destruct x1.
-exists x0.
-apply e_guard_true.
-rewrite H5 in H2.
-assumption.
-assumption.
-exists x.
-apply e_guard_other.
-rewrite H5 in H2.
-assumption.
-assumption.
-Set Printing Coercions.
-exists undefval.
-apply e_guard_err with (v := jval j).
-assumption.
-intro.
-intro.
-inversion H5.
-contradict H7.
-apply H4.
-
-exists undefval.
-apply e_guard_err with (v := ghost_errval).
-assumption.
-intros.
-discriminate.
+- case (IH c H_norm).
+  case; last by exists undefval; eapply e_nsfield_err1; eauto.
+  case => [z|b|l H|].
+  * by exists undefval; apply e_nsfield_err1 with (v := intval z).
+  * by exists undefval; apply e_nsfield_err1 with (v := boolval b).
+  * have Hc: exists gv dh sh ars, c = (gv, (dh, sh), ars).
+     destruct c; destruct p; destruct h.
+     by exists g, d, s, l0.
+    case: Hc => [ gv [dh [sh [ars Hc] ] ] ].
+    case_eq (dh l) => [obj|] Hdh; first by exists (jval (obj f)); eapply e_nsfield; eauto.
+    by exists undefval; eapply e_nsfield_err2; eauto.
+  * by exists undefval; eapply e_nsfield_err1; eauto.
+- move => H; inversion H; intros.
+  destruct h as (dh, sh).
+  case Hf: (sh c f) => [v|]; last by exists undefval; eapply e_sfield_err; eauto.
+  by exists (jval v); eapply e_sfield; eauto.
+- move => H; inversion H; subst.
+  exists (s[[n]]).
+  by apply e_stack.
+- move => n c H; inversion H; subst.
+  exists (ls n).
+  by apply e_local.
+- move => e1 IHe1 e2 IHe2 c H.
+  have [v1 Hv1] := IHe1 _ H.
+  have [v2 Hv2] := IHe2 _ H.
+  case (int_or_other v1); case (int_or_other v2) => H1 H2.
+  * inversion H1; subst.
+    inversion H2; subst.
+    exists (intval (x0 + x)).
+    by apply e_plus.
+  * by exists undefval; eapply e_plus_err; eauto.
+  * by exists undefval; eapply e_plus_err; eauto.
+  * by exists undefval; eapply e_plus_err; eauto.
+- move => e1 IHe1 e2 IHe2 e3 IHe3 c Hc.
+  have [v1 Hv1] := IHe1 _ Hc.
+  have [v2 Hv2] := IHe2 _ Hc.
+  have [v3 Hv3] := IHe3 _ Hc.
+  have Hb_dec: (forall v, (exists b, v = boolval b) \/ forall b, v <> boolval b).
+    case => [z|b|l|].
+    * by right.
+    * by left; exists b.
+    * by right.
+    * by right.
+  destruct v1; last by exists undefval; eapply e_guard_err; eauto.
+  case (Hb_dec j) => [ [b Hb]|Hb].
+    subst.
+    destruct b; first by exists v2; apply e_guard_true.
+    by exists v3; apply e_guard_other.
+  exists undefval; eapply e_guard_err; eauto.
+  move => b Hj.
+  by inversion Hj; congruence.
 Qed.
-*)
-Admitted.
 
-
-(*
-
- intros.
-  induction e.
-
-  destruct v.
-
-  (* value *)
-  exists j.
-  apply e_val.
-  
-  (* ghost_errval *)
-  exists ghost_errval.
-  apply e_ghosterr.
-  
-  (* ghost var *)
-   inversion H; subst.
-
-  exists (gv g).
-  apply e_ghostvar.
-
-  (* ns field *)
-  elim IHe; intros.
-  destruct x.
-  destruct j.
-  
-  exists undefval; apply e_nsfield_err1 with (v := intval z); [assumption | intros; discriminate].
-  exists undefval; apply e_nsfield_err1 with (v := boolval b); [assumption | intros; discriminate].
-
-  inversion H; subst.
-  elim IHe; intros.
-
-  assert ((exists l, x = refval l) \/ (forall l, x <> refval l)).
-    destruct x.
-    destruct j.
-    right; intros; intro; discriminate.
-    right; intros; intro; discriminate.
-    left; exists l0; reflexivity.
-    right; intros; intro; discriminate.
-    right; intros; intro; discriminate.
-  
-  elim H2; intros.
-elim H3; intros.
-destruct h as (dh, sh).
-
-assert (dh x0 = None \/ exists obj, dh x0 = Some obj).
-  destruct (dh x0).
-  right; exists o; reflexivity.
-  left; reflexivity.
-
-elim H5; intros.
-exists undefval.
-apply e_nsfield_err2 with (gv := gv) (dh := dh) (sh := sh) (ars := normal c0 m pc s ls :: ars) (l := x0).
-reflexivity.
-rewrite <- H4; assumption.
-assumption.
-
-elim H6; intros obj.
-exists (obj f).
-apply e_nsfield with (gv := gv) (dh := dh) (sh := sh) (ars := normal c0 m pc s ls :: ars) (l := x0).
-reflexivity.
-rewrite <- H4; assumption.
-assumption.
-
-exists undefval.
-apply e_nsfield_err1 with (v := x).
-assumption.
-assumption.
-
-exists undefval.
-apply e_nsfield_err1 with (v := undefval).
-assumption.
-intros.
-intro; discriminate.
-
-exists undefval.
-apply e_nsfield_err1 with (v := ghost_errval).
-assumption.
-intros.
-intro; discriminate.
-
-(* sfield *)
-inversion H; intros.
-destruct h as (dh, sh).
-assert ((sh c0) f = None \/ exists v, (sh c0) f = Some v).
-  destruct (sh c0).
-  right; exists j; reflexivity.
-  left; reflexivity.
-elim H1; intros.
-exists undefval.
-apply e_sfield_err with (gv := gv) (dh := dh) (sh := sh) (ars := normal c1 m pc s ls :: ars).
-reflexivity.
-assumption.
-elim H2; intros.
-exists x.
-apply e_sfield with (gv := gv) (dh := dh) (sh := sh) (ars := normal c1 m pc s ls :: ars).
-reflexivity.
-assumption.
-
-(* stackexp *)
-inversion H; subst.
-exists (s[[n]]).
-apply e_stack.
-reflexivity.
-
-(* local n *)
-inversion H; subst.
-exists (ls n).
-apply e_local.
-reflexivity.
-
-(* plus *)
-elim IHe1; intros.
-assert (is_intval x \/ ~is_intval x).
-  apply int_or_other.
-elim H1; intros.
-
-elim IHe2; intros.
-assert (is_intval x0 \/ ~is_intval x0).
-  apply int_or_other.
-elim H4; intros.
-inversion H2; inversion H5; subst.
-exists (intval (x1 + x2)).
-apply e_plus.
-assumption.
-assumption.
-
-exists undefval.
-apply e_plus_err with (v1 := x) (v2 := x0).
-assumption.
-assumption.
-right; assumption.
-
-exists undefval.
-elim IHe2; intros.
-apply e_plus_err with (v1 := x) (v2 := x0).
-assumption.
-assumption.
-left; assumption.
-
-(* guarded *)
-elim IHe1; elim IHe2; elim IHe3; intros.
-assert (forall v, (exists b, v = boolval b) \/ forall b, v <> boolval b).
-  intros.
-  destruct v.
-  right; intros; discriminate.
-  left; exists b; reflexivity.
-  right; intros; discriminate.
-  right; intros; discriminate.
-destruct x1.
-elim (H3 j); intros.
-elim H4; intros.
-destruct x1.
-exists x0.
-apply e_guard_true.
-rewrite H5 in H2.
-assumption.
-assumption.
-exists x.
-apply e_guard_other.
-rewrite H5 in H2.
-assumption.
-assumption.
-Set Printing Coercions.
-exists undefval.
-apply e_guard_err with (v := jval j).
-assumption.
-intro.
-intro.
-inversion H5.
-contradict H7.
-apply H4.
-
-exists undefval.
-apply e_guard_err with (v := ghost_errval).
-assumption.
-intros.
-discriminate.
-*)
-
-
-  Open Scope Z_scope.
+Open Scope Z_scope.
 
 
   Inductive aeval : ast -> conf -> Prop :=
