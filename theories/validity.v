@@ -1,6 +1,6 @@
 From Coq Require Import List Lia.
 From PCC Require Import list_utils java_basic_defs program_model expressions_assertions semantics_assertions weakest_precondition.
-From mathcomp Require Import ssreflect.
+From PCC Require Import ssrexport.
 
 (* The default variable denotes an assertion that expresses that
    all variables have their default values. *)
@@ -129,7 +129,7 @@ Proof.
 
     (* nsfield *) split; intros. simpl in H0.
     inversion H0; subst.
-    apply IHe in H4. Check e_nsfield.
+    apply IHe in H4.
     apply (e_nsfield gv cnf' e dh sh (normal c m (successor p c m pc) (ls n::s) ls :: ars) f l obj).
     inversion H3.
     rewrite <- H2.

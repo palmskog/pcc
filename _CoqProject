@@ -8,3 +8,4 @@ theories/semantics_assertions.v
 theories/weakest_precondition.v
 theories/validity.v
 theories/security_defs.v
+theories/ssrexport.v

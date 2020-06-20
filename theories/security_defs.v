@@ -1,6 +1,6 @@
 From Coq Require Import List.
 From PCC Require Import java_basic_defs program_model expressions_assertions.
-From mathcomp Require Import ssreflect.
+From PCC Require Import ssrexport.
 
 Section SecurityDefs.
   

@@ -1,6 +1,6 @@
 From PCC Require Import java_basic_defs expressions_assertions program_model.
-From Coq Require Import ZArith.
-From mathcomp Require Import ssreflect.
+From Coq Require Import ZArith Lia.
+From PCC Require Import ssrexport.
 
 Section SemanticsAssertions.
   
@@ -126,7 +126,7 @@ Open Scope Z_scope.
     destruct v1; destruct v2; try (right; intro; discriminate).
     destruct j; destruct j0; try (right; intro; discriminate).
     assert (z = z0 \/ z <> z0).
-      omega.
+      lia.
     elim H; intros.
     subst.
     left; reflexivity.
@@ -141,7 +141,7 @@ Open Scope Z_scope.
     unfold loc in l.
     unfold loc in l0.
     assert (l = l0 \/ l <> l0).
-      omega.
+      lia.
     elim H; intros.
     subst.
     left; reflexivity.
@@ -281,7 +281,7 @@ Theorem eval_or : forall a c, normal_conf c -> aeval a c \/ aeval_f a c.
   
   elim H4; elim H5; intros.
   elim H6; elim H7; intros; subst.
-  assert (x <= x0 \/ x > x0). omega.
+  assert (x <= x0 \/ x > x0). lia.
   elim H8; intros.
   left; apply e_le with (i := x) (j := x0); assumption.
   right; apply e_le_f with (i := x) (j := x0); assumption.
@@ -373,7 +373,7 @@ Proof.
   assert (jval (intval i) = intval i0). apply deterministic_eeval with (e := e)  (c := c); assumption.
   assert (jval (intval j) = intval j0). apply deterministic_eeval with (e := e0) (c := c); assumption.
   inversion H2; inversion H3; subst.
-  omega.
+  lia.
   
   assert (v1 = intval i). apply deterministic_eeval with (e := e)  (c := c); assumption.
   assert (v2 = intval j). apply deterministic_eeval with (e := e0) (c := c); assumption.

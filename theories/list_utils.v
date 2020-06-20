@@ -1,7 +1,7 @@
 From Coq Require Import List.
 From Coq Require Import Arith.
 From Coq Require Import Lia.
-From mathcomp Require Import ssreflect.
+From PCC Require Import ssrexport.
 
 Set Implicit Arguments.
 Unset Strict Implicit.

@@ -5,19 +5,17 @@ version: "dev"
 homepage: "https://github.com/palmskog/pcc"
 dev-repo: "git+https://github.com/palmskog/pcc.git"
 bug-reports: "https://github.com/palmskog/pcc/issues"
-license: "UNKNOWN"
+license: "MIT"
 
 synopsis: "Coq formalization of a proof carrying code framework for inlined reference monitors in Java bytecode"
 description: """
 A light-weight approach for certification of monitor inlining for
-sequential Java bytecode using proof-carrying code, formalized
-in Coq."""
+sequential Java bytecode using proof-carrying code, formalized in Coq."""
 
 build: ["dune" "build" "-p" name "-j" jobs]
 depends: [
   "dune" {>= "2.5"}
   "coq" {(>= "8.10" & < "8.13~") | (= "dev")}
-  "coq-mathcomp-ssreflect" {>= "1.9" & < "1.11~"}
 ]
 
 tags: [
