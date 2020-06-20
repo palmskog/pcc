@@ -90,6 +90,7 @@ Lemma wp_correct_normal_aload : forall c m pc s ls h n ars gv,
   instr_at p c m pc = aload n ->
   (∥wp p c m pc ∥ (gv, h, normal c m pc s ls :: ars) <->
   ∥ast_at p c m (successor p c m pc) ∥ (gv, h, normal c m (successor p c m pc) (ls n :: s) ls :: ars)).
+Proof.
   intros.
   unfold wp.
   rewrite H.
@@ -454,30 +455,71 @@ apply IHa1 in H6; assumption.
 apply is_norm_conf.
 apply is_norm_conf.
 apply IHa3 in H7; assumption.
-Qed.  
-  
-  Lemma wp_correct_normal :
-    forall h cid mid pc s ls ars c' a,
-      let c := (h, (normal cid mid pc s ls)::ars) in
-        trans p c c' ->
-        normal_conf c' ->
-        current_ast p c' = Some a ->
-        (∥ wp p cid mid pc ∥ c <->
-        ∥ a ∥ c').
+Qed.
+
+Lemma wp_correct_normal_astore: forall c m pc s ls h n v ars gv,
+ instr_at p c m pc = astore n ->
+ (∥wp p c m pc ∥ (gv, h, normal c m pc (v :: s) ls :: ars) <->
+   ∥ast_at p c m (successor p c m pc) ∥ (gv, h, normal c m (successor p c m pc) s (upd ls n v) :: ars)).
+Proof.
+Admitted.
+
+Lemma wp_correct_normal_dup: forall c m pc s ls h v ars gv,
+ instr_at p c m pc = dup ->
+ (∥wp p c m pc ∥ (gv, h, normal c m pc (v :: s) ls :: ars) <->
+   ∥ast_at p c m (successor p c m pc) ∥ (gv, h, normal c m (successor p c m pc) (v :: v :: s) ls :: ars)).
+Proof.
+Admitted.
+
+Lemma wp_correct_normal_goto: forall c m pc s ls h l ars gv,
+ instr_at p c m pc = goto l ->
+  (∥ wp p c m pc ∥ (gv, h, normal c m pc s ls :: ars) <->
+  ∥ ast_at p c m l ∥ (gv, h, normal c m l s ls :: ars)).
+Proof.
+Admitted.
+
+Lemma wp_correct_normal : forall h cid mid pc s ls ars c' a,
+  let c := (h, (normal cid mid pc s ls)::ars) in
+    trans p c c' ->
+    normal_conf c' ->
+    current_ast p c' = Some a ->
+    (∥ wp p cid mid pc ∥ c <->
+    ∥ a ∥ c').
 Proof.
 intros.
-inversion H; subst.
+inversion H; subst; last first.
+  (* trans *)
+  by admit.
 inversion H0; subst.
 inversion H1; subst.
 inversion H2; subst.
 inversion H4; subst.
-inversion H6; subst.
-inversion H5; subst.
-
-(* aload n *)
-apply wp_correct_normal_aload; assumption.
-
-(* astore n *)
+- (* aload n *)
+  inversion H6; subst.
+  inversion H5; subst.
+  by apply wp_correct_normal_aload.
+- (* astore n *)
+  inversion H6; subst.
+  inversion H5; subst.
+  by apply wp_correct_normal_astore.
+- (* dup *)
+  inversion H6; subst.
+  inversion H5; subst.
+  rewrite H2.
+  by apply wp_correct_normal_dup.
+- (* goto *)
+  inversion H6; subst.
+  inversion H5; subst.
+  rewrite H2.
+  by apply wp_correct_normal_goto.
+- (* iconst *)
+  by admit.
+- (* ldc *)
+  by admit.
+- (* ifeq true *)
+  by admit.
+- (* ifeq false *)
+  by admit.
 (* The other instructions can be treated similarly and are proved correct when the
    remaining of the proof script is completed and the definitions more stable. *)
 
