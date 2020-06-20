@@ -1,6 +1,9 @@
 # PCC
 
+[![CI][action-shield]][action-link]
 
+[action-shield]: https://github.com/palmskog/pcc/workflows/CI/badge.svg?branch=master
+[action-link]: https://github.com/palmskog/pcc/actions?query=workflow%3ACI
 
 
 

@@ -4,6 +4,7 @@ shortname: pcc
 organization: palmskog
 community: false
 travis: false
+action: true
 coqdoc: false
 dune: true
 
